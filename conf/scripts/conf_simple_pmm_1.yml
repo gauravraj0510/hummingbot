@@ -1,0 +1,8 @@
+script_file_name: simple_pmm.py
+exchange: lbank
+trading_pair: MNTL-USDT
+order_amount: 22000
+bid_spread: 0.0001
+ask_spread: 0.0001
+order_refresh_time: 15
+price_type: mid
