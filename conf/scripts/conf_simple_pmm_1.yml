@@ -4,5 +4,5 @@ trading_pair: MNTL-USDT
 order_amount: 22000
 bid_spread: 0.0000
 ask_spread: 0.0000
-order_refresh_time: 30
+order_refresh_time: 10
 price_type: mid
