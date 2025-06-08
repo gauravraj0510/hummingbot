@@ -58,7 +58,9 @@ class SimplePMMRandom(ScriptStrategyBase):
             if self.can_place_both_orders(proposal_adjusted):
                 self.place_orders(proposal_adjusted)
             else:
-                self.log_with_clock(logging.WARNING, "Cannot place both orders - insufficient balance for one or both sides")
+                msg = "Cannot place both orders - insufficient balance for one or both sides"
+                self.log_with_clock(logging.WARNING, msg)
+                self.notify_hb_app_with_timestamp(msg) 
             
             # Generate random refresh time between min and max
             random_refresh_time = random.randint(
