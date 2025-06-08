@@ -33,6 +33,7 @@ class SimplePMMRandom(ScriptStrategyBase):
     The bot will place two orders around the price_source (mid price or last traded price) in a trading_pair on
     exchange, with a distance defined by the ask_spread and bid_spread. The order refresh time and order amount
     will be randomly selected from their respective ranges each time orders are placed.
+    Orders are placed atomically - either both buy and sell orders are placed, or neither is placed.
     """
 
     create_timestamp = 0
@@ -52,13 +53,47 @@ class SimplePMMRandom(ScriptStrategyBase):
             self.cancel_all_orders()
             proposal: List[OrderCandidate] = self.create_proposal()
             proposal_adjusted: List[OrderCandidate] = self.adjust_proposal_to_budget(proposal)
-            self.place_orders(proposal_adjusted)
+            
+            # Check if we can place both orders
+            if self.can_place_both_orders(proposal_adjusted):
+                self.place_orders(proposal_adjusted)
+            else:
+                self.log_with_clock(logging.WARNING, "Cannot place both orders - insufficient balance for one or both sides")
+            
             # Generate random refresh time between min and max
             random_refresh_time = random.randint(
                 self.config.min_order_refresh_time,
                 self.config.max_order_refresh_time
             )
             self.create_timestamp = random_refresh_time + self.current_timestamp
+
+    def can_place_both_orders(self, proposal: List[OrderCandidate]) -> bool:
+        """
+        Check if we have sufficient balance to place both buy and sell orders.
+        Returns True only if both orders can be placed.
+        """
+        if len(proposal) != 2:
+            return False
+            
+        connector = self.connectors[self.config.exchange]
+        base, quote = self.config.trading_pair.split("-")
+        
+        # Check buy order (quote currency needed)
+        buy_order = next((order for order in proposal if order.order_side == TradeType.BUY), None)
+        if buy_order:
+            quote_balance = connector.get_available_balance(quote)
+            required_quote = buy_order.amount * buy_order.price
+            if quote_balance < required_quote:
+                return False
+        
+        # Check sell order (base currency needed)
+        sell_order = next((order for order in proposal if order.order_side == TradeType.SELL), None)
+        if sell_order:
+            base_balance = connector.get_available_balance(base)
+            if base_balance < sell_order.amount:
+                return False
+        
+        return True
 
     def create_proposal(self) -> List[OrderCandidate]:
         ref_price = self.connectors[self.config.exchange].get_price_by_type(self.config.trading_pair, self.price_source)
