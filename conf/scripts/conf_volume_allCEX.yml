@@ -2,6 +2,7 @@ markets: {}
 candles_config: []
 controllers_config:
 - conf_lbank_volume.yml
+config_update_interval: 10
 script_file_name: v2_with_controllers.py
 time_to_cash_out: null
 max_global_drawdown: null
