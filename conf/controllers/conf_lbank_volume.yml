@@ -1,0 +1,25 @@
+id: conf_lbank_volume
+controller_name: pmm_simple
+controller_type: market_making
+total_amount_quote: '30'
+manual_kill_switch: false
+candles_config: []
+connector_name: lbank
+trading_pair: MNTL-USDT
+buy_spreads:
+- 0.0
+sell_spreads:
+- 0.0
+buy_amounts_pct:
+- '1'
+sell_amounts_pct:
+- '1'
+executor_refresh_time: 10
+cooldown_time: 10
+leverage: 1
+position_mode: HEDGE
+stop_loss: '0.002'
+take_profit: '0.003'
+time_limit: 120
+take_profit_order_type: 2
+trailing_stop: null
