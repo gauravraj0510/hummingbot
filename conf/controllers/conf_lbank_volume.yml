@@ -1,7 +1,7 @@
 id: conf_lbank_volume
 controller_name: pmm_simple
 controller_type: market_making
-total_amount_quote: '30'
+total_amount_quote: '20'
 manual_kill_switch: false
 candles_config: []
 connector_name: lbank
