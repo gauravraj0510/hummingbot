@@ -22,6 +22,16 @@ EXAMPLE_PAIR = "BTC-USDT"
 
 class LbankConfigMap(BaseConnectorConfigMap):
     connector: Literal["lbank"] = "lbank"
+    lbank_auth_method: str = Field(
+        default="HmacSHA256",
+        json_schema_extra={
+            "prompt": lambda cm: (
+                f"Enter your LBank API Authentication Method ({'/'.join(list(CONSTANTS.LBANK_AUTH_METHODS))})"
+            ),
+            "is_connect_key": True,
+            "prompt_on_new": True,
+        }
+    )
     lbank_api_key: SecretStr = Field(
         default=...,
         json_schema_extra={
@@ -40,16 +50,6 @@ class LbankConfigMap(BaseConnectorConfigMap):
             "prompt_on_new": True,
         }
     )
-    lbank_auth_method: str = Field(
-        default="RSA",
-        json_schema_extra={
-            "prompt": lambda cm: (
-                f"Enter your LBank API Authentication Method ({'/'.join(list(CONSTANTS.LBANK_AUTH_METHODS))})"
-            ),
-            "is_connect_key": True,
-            "prompt_on_new": True,
-        }
-    )
     model_config = ConfigDict(title="lbank")
 
     @model_validator(mode='after')
@@ -57,14 +57,27 @@ class LbankConfigMap(BaseConnectorConfigMap):
         if not hasattr(self, 'lbank_auth_method'):
             return self
             
-        if self.lbank_auth_method not in CONSTANTS.LBANK_AUTH_METHODS:
-            raise ValueError(f"Authentication Method: {self.lbank_auth_method} not supported. Supported methods are RSA/HmacSHA256")
+        auth_method = self.lbank_auth_method
+        if auth_method not in CONSTANTS.LBANK_AUTH_METHODS:
+            raise ValueError(f"Authentication Method: {auth_method} not supported. Supported methods are {', '.join(CONSTANTS.LBANK_AUTH_METHODS)}")
             
-        if self.lbank_auth_method == "RSA" and hasattr(self, 'lbank_secret_key'):
+        if not hasattr(self, 'lbank_secret_key'):
+            return self
+
+        secret_key = self.lbank_secret_key.get_secret_value()
+        
+        if auth_method == "RSA":
             try:
-                RSA.importKey(LbankAuth.RSA_KEY_FORMAT.format(self.lbank_secret_key.get_secret_value()))
+                # Check if the key is already in RSA format
+                if not secret_key.startswith(LbankAuth.RSA_HEADER):
+                    secret_key = LbankAuth.RSA_KEY_FORMAT.format(secret_key)
+                RSA.importKey(secret_key)
             except Exception as e:
-                raise ValueError(f"Unable to import RSA keys. Error: {str(e)}")
+                raise ValueError(f"Invalid RSA key format. Error: {str(e)}")
+        elif auth_method == "HmacSHA256":
+            if not secret_key or len(secret_key.strip()) == 0:
+                raise ValueError("HmacSHA256 secret key cannot be empty")
+            
         return self
 
 

@@ -33,13 +33,15 @@ class LbankExchange(ExchangePyBase):
         client_config_map: "ClientConfigAdapter",
         lbank_api_key: str,
         lbank_secret_key: str,
-        lbank_auth_method: str = "RSA",
+        lbank_auth_method: str,
         trading_pairs: Optional[List[str]] = None,
         trading_required: bool = True,
     ):
         self.lbank_api_key = lbank_api_key
         self.lbank_secret_key = lbank_secret_key
         self.lbank_auth_method = lbank_auth_method
+        if self.lbank_auth_method not in ["RSA", "HmacSHA256"]:
+            raise ValueError(f"Unsupported authentication method: {lbank_auth_method}. Must be either 'RSA' or 'HmacSHA256'")
         self._trading_pairs = trading_pairs or []
         self._trading_required = trading_required
         super().__init__(client_config_map)
@@ -47,7 +49,9 @@ class LbankExchange(ExchangePyBase):
     @property
     def authenticator(self):
         return LbankAuth(
-            api_key=self.lbank_api_key, secret_key=self.lbank_secret_key, auth_method=self.lbank_auth_method
+            api_key=self.lbank_api_key,
+            secret_key=self.lbank_secret_key,
+            auth_method=self.lbank_auth_method
         )
 
     @property

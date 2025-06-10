@@ -26,8 +26,15 @@ class LbankAuth(AuthBase):
 
     def __init__(self, api_key: str, secret_key: str, auth_method: Optional[str] = "RSA") -> None:
         self.api_key: str = api_key
-        self.secret_key: str = self.RSA_KEY_FORMAT.format(secret_key) if auth_method == "RSA" else secret_key
         self.auth_method: str = auth_method
+        
+        if self.auth_method == "RSA":
+            if not secret_key.startswith(self.RSA_HEADER):
+                self.secret_key: str = self.RSA_KEY_FORMAT.format(secret_key)
+            else:
+                self.secret_key: str = secret_key
+        else:
+            self.secret_key: str = secret_key
 
     def _time(self) -> int:
         return int(round(time.time() * 1e3))
@@ -40,20 +47,23 @@ class LbankAuth(AuthBase):
         Helper function that includes the timestamp and generates the appropriate authentication signature for the
         request.
         """
-
         payload: str = hashlib.md5(urlencode(dict(sorted(data.items()))).encode("utf-8")).hexdigest().upper()
-        if self.auth_method == "RSA":
-            key = RSA.importKey(self.secret_key)
-            signer = PKCS1_v1_5.new(key)
-            digest = SHA256.new()
-            digest.update(payload.encode("utf-8"))
-            return b64encode(signer.sign(digest)).decode("utf-8")
-        elif self.auth_method == "HmacSHA256":
-            secret_bytes = bytes(self.secret_key, encoding="utf-8")
-            payload_bytes = bytes(payload, encoding="utf-8")
-            return hmac.new(secret_bytes, payload_bytes, digestmod=hashlib.sha256).hexdigest().lower()
-
-        return None
+        
+        try:
+            if self.auth_method == "RSA":
+                key = RSA.importKey(self.secret_key)
+                signer = PKCS1_v1_5.new(key)
+                digest = SHA256.new()
+                digest.update(payload.encode("utf-8"))
+                return b64encode(signer.sign(digest)).decode("utf-8")
+            elif self.auth_method == "HmacSHA256":
+                secret_bytes = bytes(self.secret_key, encoding="utf-8")
+                payload_bytes = bytes(payload, encoding="utf-8")
+                return hmac.new(secret_bytes, payload_bytes, digestmod=hashlib.sha256).hexdigest().lower()
+            else:
+                raise ValueError(f"Unsupported authentication method: {self.auth_method}")
+        except Exception as e:
+            raise ValueError(f"Error generating signature: {str(e)}")
 
     async def rest_authenticate(self, request: RESTRequest) -> RESTRequest:
         """
