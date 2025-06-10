@@ -188,11 +188,23 @@ class MarketDataProvider:
         client_config_map = ClientConfigAdapter(ClientConfigMap())
         connector_config = AllConnectorSettings.get_connector_config_keys(connector_name)
         api_keys = {key: "" for key in connector_config.__fields__.keys() if key != "connector"}
+        
+        # Retrieve connector-specific init params from the controller
+        # This assumes the controller instance is available, which it is when called from strategy_v2_base
+        # We need to find a way to get the controller's config here.
+        # The MarketDataProvider doesn't directly have access to the strategy's controllers config at this point.
+        # Instead, we should extract the auth_method from the ClientConfigMap directly.
+        
+        # Get the connector config map for the specific connector
+        conn_config_map = ClientConfigMap.instance().get_connector_config_map(connector_name)
+        auth_method = conn_config_map.get("lbank_auth_method", "HmacSHA256")
+
         init_params = conn_setting.conn_init_parameters(
             trading_pairs=[],
             trading_required=False,
             api_keys=api_keys,
             client_config_map=client_config_map,
+            lbank_auth_method=auth_method  # Pass the auth method here
         )
         connector_class = get_connector_class(connector_name)
         connector = connector_class(**init_params)

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
@@ -25,6 +26,13 @@ if TYPE_CHECKING:
 
 
 class LbankExchange(ExchangePyBase):
+    _logger: Optional[logging.Logger] = None
+
+    @classmethod
+    def logger(cls) -> logging.Logger:
+        if cls._logger is None:
+            cls._logger = logging.getLogger(__name__)
+        return cls._logger
 
     web_utils = web_utils
 
@@ -37,6 +45,7 @@ class LbankExchange(ExchangePyBase):
         trading_pairs: Optional[List[str]] = None,
         trading_required: bool = True,
     ):
+        self.logger().info(f"LbankExchange __init__ - received lbank_auth_method: '{lbank_auth_method}'")
         self.lbank_api_key = lbank_api_key
         self.lbank_secret_key = lbank_secret_key
         self.lbank_auth_method = lbank_auth_method
