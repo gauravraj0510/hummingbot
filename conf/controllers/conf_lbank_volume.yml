@@ -1,7 +1,7 @@
 id: conf_lbank_volume
 controller_name: pmm_simple
 controller_type: market_making
-total_amount_quote: '25'
+total_amount_quote: '30'
 manual_kill_switch: false
 candles_config: []
 connector_name: lbank
@@ -14,8 +14,8 @@ buy_amounts_pct:
 - '1'
 sell_amounts_pct:
 - '1'
-executor_refresh_time: 20
-cooldown_time: 20
+executor_refresh_time: 15
+cooldown_time: 15
 leverage: 1
 position_mode: HEDGE
 stop_loss: '0.0002'
