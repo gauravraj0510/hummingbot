@@ -21,5 +21,5 @@ position_mode: HEDGE
 stop_loss: '0.0002'
 take_profit: '0.0004'
 time_limit: 60
-take_profit_order_type: 2
+take_profit_order_type: 1
 trailing_stop: null
