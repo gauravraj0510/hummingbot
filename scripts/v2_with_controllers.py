@@ -25,6 +25,7 @@ class GenericV2StrategyWithCashOutConfig(StrategyV2ConfigBase):
     extra_inventory: Optional[float] = 0.02
     min_amount_to_rebalance_usd: Decimal = Decimal("8")
     asset_to_rebalance: str = "USDT"
+    target_balance: Optional[Decimal] = None
 
 
 class GenericV2StrategyWithCashOut(StrategyV2Base):
@@ -87,61 +88,97 @@ class GenericV2StrategyWithCashOut(StrategyV2Base):
 
     def control_rebalance(self):
         if self.rebalance_interval and self._last_rebalance_check_timestamp + self.rebalance_interval <= self.current_timestamp:
-            balance_required = {}
-            for controller_id, controller in self.controllers.items():
-                connector_name = controller.config.model_dump().get("connector_name")
-                if connector_name and "perpetual" in connector_name:
-                    continue
-                if connector_name not in balance_required:
-                    balance_required[connector_name] = {}
-                tokens_required = controller.get_balance_requirements()
-                for token, amount in tokens_required:
-                    if token not in balance_required[connector_name]:
-                        balance_required[connector_name][token] = amount
-                    else:
-                        balance_required[connector_name][token] += amount
-            for connector_name, balance_requirements in balance_required.items():
-                connector = self.connectors[connector_name]
-                for token, amount in balance_requirements.items():
-                    if token == self.config.asset_to_rebalance:
+            if self.config.target_balance is not None:
+                # Use new USDT target rebalancing logic
+                for connector_name, connector in self.connectors.items():
+                    if "perpetual" in connector_name:
                         continue
-                    balance = connector.get_balance(token)
-                    trading_pair = f"{token}-{self.config.asset_to_rebalance}"
-                    mid_price = connector.get_mid_price(trading_pair)
-                    trading_rule = connector.trading_rules[trading_pair]
-                    amount_with_safe_margin = amount * (1 + Decimal(self.config.extra_inventory))
-                    active_executors_for_pair = self.filter_executors(
-                        executors=self.get_all_executors(),
-                        filter_func=lambda x: x.is_active and x.trading_pair == trading_pair and x.connector_name == connector_name
-                    )
-                    unmatched_amount = sum([executor.filled_amount_quote for executor in active_executors_for_pair if executor.side == TradeType.SELL]) - sum([executor.filled_amount_quote for executor in active_executors_for_pair if executor.side == TradeType.BUY])
-                    balance += unmatched_amount / mid_price
-                    base_balance_diff = balance - amount_with_safe_margin
-                    abs_balance_diff = abs(base_balance_diff)
-                    trading_rules_condition = abs_balance_diff > trading_rule.min_order_size and abs_balance_diff * mid_price > trading_rule.min_notional_size and abs_balance_diff * mid_price > self.config.min_amount_to_rebalance_usd
-                    order_type = OrderType.MARKET
-                    if base_balance_diff > 0:
-                        if trading_rules_condition:
-                            self.logger().info(f"Rebalance: Selling {amount_with_safe_margin} {token} to {self.config.asset_to_rebalance}. Balance: {balance} | Executors unmatched balance {unmatched_amount / mid_price}")
-                            connector.sell(
+                    current_usdt_balance = connector.get_balance(self.config.asset_to_rebalance)
+                    usdt_diff = current_usdt_balance - self.config.target_balance
+                    if abs(usdt_diff) > self.config.min_amount_to_rebalance_usd:
+                        # Get all available trading pairs for this connector
+                        trading_pairs = [pair for pair in connector.trading_pairs if self.config.asset_to_rebalance in pair]
+                        for trading_pair in trading_pairs:
+                            base_token = trading_pair.split("-")[0]
+                            if base_token != self.config.asset_to_rebalance:
+                                mid_price = connector.get_mid_price(trading_pair)
+                                trading_rule = connector.trading_rules[trading_pair]
+                                if usdt_diff > 0:  # Too much USDT, need to buy
+                                    amount_to_buy = usdt_diff / mid_price
+                                    if amount_to_buy > trading_rule.min_order_size and amount_to_buy * mid_price > trading_rule.min_notional_size:
+                                        self.logger().info(f"USDT Rebalance: Buying {amount_to_buy} {base_token} to maintain target USDT balance. Current: {current_usdt_balance}, Target: {self.config.target_balance}")
+                                        connector.buy(
+                                            trading_pair=trading_pair,
+                                            amount=amount_to_buy,
+                                            order_type=OrderType.MARKET,
+                                            price=mid_price)
+                                else:  # Too little USDT, need to sell
+                                    amount_to_sell = abs(usdt_diff) / mid_price
+                                    if amount_to_sell > trading_rule.min_order_size and amount_to_sell * mid_price > trading_rule.min_notional_size:
+                                        self.logger().info(f"USDT Rebalance: Selling {amount_to_sell} {base_token} to maintain target USDT balance. Current: {current_usdt_balance}, Target: {self.config.target_balance}")
+                                        connector.sell(
+                                            trading_pair=trading_pair,
+                                            amount=amount_to_sell,
+                                            order_type=OrderType.MARKET,
+                                            price=mid_price)
+                                break  # Only rebalance one token to maintain USDT balance
+            else:
+                # Use old controller-based rebalancing logic
+                balance_required = {}
+                for controller_id, controller in self.controllers.items():
+                    connector_name = controller.config.model_dump().get("connector_name")
+                    if connector_name and "perpetual" in connector_name:
+                        continue
+                    if connector_name not in balance_required:
+                        balance_required[connector_name] = {}
+                    tokens_required = controller.get_balance_requirements()
+                    for token, amount in tokens_required:
+                        if token not in balance_required[connector_name]:
+                            balance_required[connector_name][token] = amount
+                        else:
+                            balance_required[connector_name][token] += amount
+                for connector_name, balance_requirements in balance_required.items():
+                    connector = self.connectors[connector_name]
+                    for token, amount in balance_requirements.items():
+                        if token == self.config.asset_to_rebalance:
+                            continue
+                        balance = connector.get_balance(token)
+                        trading_pair = f"{token}-{self.config.asset_to_rebalance}"
+                        mid_price = connector.get_mid_price(trading_pair)
+                        trading_rule = connector.trading_rules[trading_pair]
+                        amount_with_safe_margin = amount * (1 + Decimal(self.config.extra_inventory))
+                        active_executors_for_pair = self.filter_executors(
+                            executors=self.get_all_executors(),
+                            filter_func=lambda x: x.is_active and x.trading_pair == trading_pair and x.connector_name == connector_name
+                        )
+                        unmatched_amount = sum([executor.filled_amount_quote for executor in active_executors_for_pair if executor.side == TradeType.SELL]) - sum([executor.filled_amount_quote for executor in active_executors_for_pair if executor.side == TradeType.BUY])
+                        balance += unmatched_amount / mid_price
+                        base_balance_diff = balance - amount_with_safe_margin
+                        abs_balance_diff = abs(base_balance_diff)
+                        trading_rules_condition = abs_balance_diff > trading_rule.min_order_size and abs_balance_diff * mid_price > trading_rule.min_notional_size and abs_balance_diff * mid_price > self.config.min_amount_to_rebalance_usd
+                        order_type = OrderType.MARKET
+                        if base_balance_diff > 0:
+                            if trading_rules_condition:
+                                self.logger().info(f"Rebalance: Selling {amount_with_safe_margin} {token} to {self.config.asset_to_rebalance}. Balance: {balance} | Executors unmatched balance {unmatched_amount / mid_price}")
+                                connector.sell(
+                                    trading_pair=trading_pair,
+                                    amount=abs_balance_diff,
+                                    order_type=order_type,
+                                    price=mid_price)
+                            else:
+                                self.logger().info("Skipping rebalance due a low amount to sell that may cause future imbalance")
+                        else:
+                            if not trading_rules_condition:
+                                amount = max([self.config.min_amount_to_rebalance_usd / mid_price, trading_rule.min_order_size, trading_rule.min_notional_size / mid_price])
+                                self.logger().info(f"Rebalance: Buying for a higher value to avoid future imbalance {amount} {token} to {self.config.asset_to_rebalance}. Balance: {balance} | Executors unmatched balance {unmatched_amount}")
+                            else:
+                                amount = abs_balance_diff
+                                self.logger().info(f"Rebalance: Buying {amount} {token} to {self.config.asset_to_rebalance}. Balance: {balance} | Executors unmatched balance {unmatched_amount}")
+                            connector.buy(
                                 trading_pair=trading_pair,
-                                amount=abs_balance_diff,
+                                amount=amount,
                                 order_type=order_type,
                                 price=mid_price)
-                        else:
-                            self.logger().info("Skipping rebalance due a low amount to sell that may cause future imbalance")
-                    else:
-                        if not trading_rules_condition:
-                            amount = max([self.config.min_amount_to_rebalance_usd / mid_price, trading_rule.min_order_size, trading_rule.min_notional_size / mid_price])
-                            self.logger().info(f"Rebalance: Buying for a higher value to avoid future imbalance {amount} {token} to {self.config.asset_to_rebalance}. Balance: {balance} | Executors unmatched balance {unmatched_amount}")
-                        else:
-                            amount = abs_balance_diff
-                            self.logger().info(f"Rebalance: Buying {amount} {token} to {self.config.asset_to_rebalance}. Balance: {balance} | Executors unmatched balance {unmatched_amount}")
-                        connector.buy(
-                            trading_pair=trading_pair,
-                            amount=amount,
-                            order_type=order_type,
-                            price=mid_price)
             self._last_rebalance_check_timestamp = self.current_timestamp
 
     def control_max_drawdown(self):

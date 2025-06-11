@@ -10,3 +10,4 @@ rebalance_interval: 300
 extra_inventory: 0.02
 min_amount_to_rebalance_usd: '5'
 asset_to_rebalance: USDT
+target_balance: '100'
