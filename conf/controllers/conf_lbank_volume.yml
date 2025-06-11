@@ -14,12 +14,12 @@ buy_amounts_pct:
 - '1'
 sell_amounts_pct:
 - '1'
-executor_refresh_time: 15
-cooldown_time: 15
+executor_refresh_time: 10
+cooldown_time: 10
 leverage: 1
 position_mode: HEDGE
 stop_loss: '0.0002'
 take_profit: '0.0004'
-time_limit: 60
+time_limit: 30
 take_profit_order_type: 1
 trailing_stop: null
