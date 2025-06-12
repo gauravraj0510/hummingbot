@@ -1,5 +1,5 @@
 markets:
-  MNTL-USDT: true
+  - MNTL-USDT
 candles_config: []
 controllers_config:
 - conf_lbank_volume.yml
