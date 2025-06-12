@@ -88,6 +88,18 @@ class GenericV2StrategyWithCashOut(StrategyV2Base):
 
     def control_rebalance(self):
         if self.rebalance_interval and self._last_rebalance_check_timestamp + self.rebalance_interval <= self.current_timestamp:
+            # Cancel existing rebalancing orders before placing new ones
+            for connector_name, connector in self.connectors.items():
+                if "perpetual" in connector_name:
+                    continue
+                for trading_pair in connector.trading_pairs:
+                    if self.config.asset_to_rebalance in trading_pair:
+                        # Iterate through current orders for this connector and trading pair
+                        for order in self.current_orders[connector_name]:
+                            if order.is_open and order.trading_pair == trading_pair:
+                                self.logger().info(f"Cancelling old rebalancing order {order.client_order_id} on {connector_name} for {trading_pair}.")
+                                self.cancel_order(connector.name, trading_pair, order.client_order_id)
+
             if self.config.target_balance is not None:
                 # Use new USDT target rebalancing logic
                 for connector_name, connector in self.connectors.items():
