@@ -10,6 +10,6 @@ max_global_drawdown: null
 max_controller_drawdown: null
 rebalance_interval: 60
 extra_inventory: 0.02
-min_amount_to_rebalance_usd: '10'
-asset_to_rebalance: USDT
-target_balance: '100'
+min_amount_to_rebalance_usd: '5'
+asset_to_rebalance: MNTL
+target_balance: '193000'

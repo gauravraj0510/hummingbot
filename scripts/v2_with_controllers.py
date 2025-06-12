@@ -101,39 +101,96 @@ class GenericV2StrategyWithCashOut(StrategyV2Base):
                                 self.cancel_order(connector.name, trading_pair, order.client_order_id)
 
             if self.config.target_balance is not None:
-                # Use new USDT target rebalancing logic
+                # Use new target balance rebalancing logic
                 for connector_name, connector in self.connectors.items():
                     if "perpetual" in connector_name:
                         continue
-                    current_usdt_balance = connector.get_balance(self.config.asset_to_rebalance)
-                    usdt_diff = current_usdt_balance - self.config.target_balance
-                    if abs(usdt_diff) > self.config.min_amount_to_rebalance_usd:
-                        # Get all available trading pairs for this connector
-                        trading_pairs = [pair for pair in connector.trading_pairs if self.config.asset_to_rebalance in pair]
-                        for trading_pair in trading_pairs:
-                            base_token = trading_pair.split("-")[0]
-                            if base_token != self.config.asset_to_rebalance:
-                                mid_price = connector.get_mid_price(trading_pair)
-                                trading_rule = connector.trading_rules[trading_pair]
-                                if usdt_diff > 0:  # Too much USDT, need to buy
-                                    amount_to_buy = usdt_diff / mid_price
-                                    if amount_to_buy > trading_rule.min_order_size and amount_to_buy * mid_price > trading_rule.min_notional_size:
-                                        self.logger().info(f"USDT Rebalance: Buying {amount_to_buy} {base_token} to maintain target USDT balance. Current: {current_usdt_balance}, Target: {self.config.target_balance}")
-                                        connector.buy(
-                                            trading_pair=trading_pair,
-                                            amount=amount_to_buy,
-                                            order_type=OrderType.MARKET,
-                                            price=mid_price)
-                                else:  # Too little USDT, need to sell
-                                    amount_to_sell = abs(usdt_diff) / mid_price
-                                    if amount_to_sell > trading_rule.min_order_size and amount_to_sell * mid_price > trading_rule.min_notional_size:
-                                        self.logger().info(f"USDT Rebalance: Selling {amount_to_sell} {base_token} to maintain target USDT balance. Current: {current_usdt_balance}, Target: {self.config.target_balance}")
+                    
+                    current_rebalance_asset_balance = connector.get_balance(self.config.asset_to_rebalance)
+                    balance_diff = current_rebalance_asset_balance - self.config.target_balance
+
+                    min_rebalance_amount_in_asset = self.config.min_amount_to_rebalance_usd
+                    # Need to find a trading pair to convert min_amount_to_rebalance_usd if asset_to_rebalance is not USDT
+                    # For simplicity, let's assume we find a pair like MNTL-USDT and use its mid price
+                    if self.config.asset_to_rebalance != "USDT":
+                        found_conversion_pair = None
+                        for pair in connector.trading_pairs:
+                            if self.config.asset_to_rebalance in pair and "USDT" in pair:
+                                found_conversion_pair = pair
+                                break
+                        if found_conversion_pair:
+                            conversion_mid_price = connector.get_mid_price(found_conversion_pair)
+                            if conversion_mid_price > 0:
+                                if self.config.asset_to_rebalance == found_conversion_pair.split("-")[0]: # If rebalance asset is base
+                                    min_rebalance_amount_in_asset = self.config.min_amount_to_rebalance_usd / conversion_mid_price
+                                else: # If rebalance asset is quote (already in USDT terms)
+                                    pass
+                            else:
+                                self.logger().warning(f"Could not get mid price for {found_conversion_pair} to convert min_amount_to_rebalance_usd.")
+                                continue
+                        else:
+                            self.logger().warning(f"Could not find a trading pair to convert min_amount_to_rebalance_usd for {self.config.asset_to_rebalance}.")
+                            continue # Skip rebalancing if conversion is not possible
+
+                    if abs(balance_diff) > min_rebalance_amount_in_asset:
+                        for trading_pair in connector.trading_pairs:
+                            base_asset, quote_asset = trading_pair.split("-")
+
+                            mid_price = connector.get_mid_price(trading_pair)
+                            if mid_price <= 0: # Avoid division by zero
+                                continue
+                            trading_rule = connector.trading_rules.get(trading_pair)
+                            if not trading_rule:
+                                continue
+
+                            order_placed = False
+                            if self.config.asset_to_rebalance == base_asset:
+                                # Rebalancing the base asset (e.g., MNTL in MNTL-USDT)
+                                if balance_diff > 0:  # Too much base_asset, need to sell base_asset
+                                    amount_to_trade = balance_diff
+                                    if amount_to_trade > trading_rule.min_order_size and amount_to_trade * mid_price > trading_rule.min_notional_size:
+                                        self.logger().info(f"Rebalance (Sell {base_asset}): Selling {amount_to_trade} {base_asset} to maintain target {self.config.asset_to_rebalance} balance. Current: {current_rebalance_asset_balance}, Target: {self.config.target_balance}")
                                         connector.sell(
                                             trading_pair=trading_pair,
-                                            amount=amount_to_sell,
+                                            amount=amount_to_trade,
                                             order_type=OrderType.MARKET,
-                                            price=mid_price)
-                                break  # Only rebalance one token to maintain USDT balance
+                                            price=mid_price) # Price might be ignored by Market order
+                                        order_placed = True
+                                else:  # Too little base_asset, need to buy base_asset
+                                    amount_to_trade = abs(balance_diff)
+                                    if amount_to_trade > trading_rule.min_order_size and amount_to_trade * mid_price > trading_rule.min_notional_size:
+                                        self.logger().info(f"Rebalance (Buy {base_asset}): Buying {amount_to_trade} {base_asset} to maintain target {self.config.asset_to_rebalance} balance. Current: {current_rebalance_asset_balance}, Target: {self.config.target_balance}")
+                                        connector.buy(
+                                            trading_pair=trading_pair,
+                                            amount=amount_to_trade,
+                                            order_type=OrderType.MARKET,
+                                            price=mid_price) # Price might be ignored by Market order
+                                        order_placed = True
+                            elif self.config.asset_to_rebalance == quote_asset:
+                                # Rebalancing the quote asset (e.g., USDT in MNTL-USDT)
+                                if balance_diff > 0:  # Too much quote_asset, need to buy base_asset to use quote_asset
+                                    amount_to_trade = balance_diff / mid_price # Amount of base asset to buy
+                                    if amount_to_trade > trading_rule.min_order_size and amount_to_trade * mid_price > trading_rule.min_notional_size:
+                                        self.logger().info(f"Rebalance (Buy {base_asset}): Buying {amount_to_trade} {base_asset} to maintain target {self.config.asset_to_rebalance} balance. Current: {current_rebalance_asset_balance}, Target: {self.config.target_balance}")
+                                        connector.buy(
+                                            trading_pair=trading_pair,
+                                            amount=amount_to_trade,
+                                            order_type=OrderType.MARKET,
+                                            price=mid_price) # Price might be ignored by Market order
+                                        order_placed = True
+                                else:  # Too little quote_asset, need to sell base_asset to get quote_asset
+                                    amount_to_trade = abs(balance_diff) / mid_price # Amount of base asset to sell
+                                    if amount_to_trade > trading_rule.min_order_size and amount_to_trade * mid_price > trading_rule.min_notional_size:
+                                        self.logger().info(f"Rebalance (Sell {base_asset}): Selling {amount_to_trade} {base_asset} to maintain target {self.config.asset_to_rebalance} balance. Current: {current_rebalance_asset_balance}, Target: {self.config.target_balance}")
+                                        connector.sell(
+                                            trading_pair=trading_pair,
+                                            amount=amount_to_trade,
+                                            order_type=OrderType.MARKET,
+                                            price=mid_price) # Price might be ignored by Market order
+                                        order_placed = True
+                            
+                            if order_placed:
+                                break  # Only rebalance one token per connector to maintain target balance
             else:
                 # Use old controller-based rebalancing logic
                 balance_required = {}
