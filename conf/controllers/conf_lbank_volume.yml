@@ -4,7 +4,7 @@ controller_type: market_making
 total_amount_quote: '30'
 manual_kill_switch: false
 candles_config: []
-connector_name: lbank
+connector_name: mexc
 trading_pair: MNTL-USDT
 buy_spreads:
 - 0.0001
