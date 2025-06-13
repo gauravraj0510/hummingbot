@@ -1,8 +1,8 @@
 strategy: pure_market_making
 exchange: lbank
 market: MNTL-USDT
-bid_spread: 0.0001
-ask_spread: 0.0001
+bid_spread: 0
+ask_spread: 0
 minimum_spread: 0
 order_refresh_time: 10
 max_order_age: 60

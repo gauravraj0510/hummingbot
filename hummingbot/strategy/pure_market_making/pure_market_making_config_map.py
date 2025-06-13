@@ -110,7 +110,7 @@ def validate_decimal_list(value: str) -> Optional[str]:
     decimal_list = list(value.split(","))
     for number in decimal_list:
         try:
-            validate_result = validate_decimal(Decimal(number), 0, 100, inclusive=False)
+            validate_result = validate_decimal(Decimal(number), 0, 100, inclusive=True)
         except decimal.InvalidOperation:
             return "Please enter valid decimal numbers"
         if validate_result is not None:
@@ -138,14 +138,14 @@ pure_market_making_config_map = {
                   prompt="How far away from the mid price do you want to place the "
                          "first bid order? (Enter 1 to indicate 1%) >>> ",
                   type_str="decimal",
-                  validator=lambda v: validate_decimal(v, 0, 100, inclusive=False),
+                  validator=lambda v: validate_decimal(v, 0, 100, inclusive=True),
                   prompt_on_new=True),
     "ask_spread":
         ConfigVar(key="ask_spread",
                   prompt="How far away from the mid price do you want to place the "
                          "first ask order? (Enter 1 to indicate 1%) >>> ",
                   type_str="decimal",
-                  validator=lambda v: validate_decimal(v, 0, 100, inclusive=False),
+                  validator=lambda v: validate_decimal(v, 0, 100, inclusive=True),
                   prompt_on_new=True),
     "minimum_spread":
         ConfigVar(key="minimum_spread",
