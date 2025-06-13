@@ -1,8 +1,8 @@
 strategy: pure_market_making
 exchange: lbank
 market: MNTL-USDT
-bid_spread: 0
-ask_spread: 0
+bid_spread: 0.001
+ask_spread: 0.001
 minimum_spread: 0
 order_refresh_time: 10
 max_order_age: 1800
@@ -16,7 +16,7 @@ price_band_refresh_time: 86400
 ping_pong_enabled: false
 order_levels: 1
 order_level_amount: 0
-order_level_spread: 0
+order_level_spread: 0.001
 inventory_skew_enabled: false
 inventory_target_base_pct: 50
 inventory_range_multiplier: 1
@@ -29,7 +29,7 @@ ask_order_optimization_depth: 0.1
 bid_order_optimization_depth: 0.1
 price_source: current_market
 price_type: mid_price
-price_source_exchange: lbank
+price_source_exchange: mexc
 price_source_market: MNTL-USDT
 price_source_custom_api: ""
 custom_api_update_interval: 5
@@ -37,7 +37,7 @@ add_transaction_costs: false
 take_if_crossed: false
 order_override: false
 should_wait_order_cancel_confirmation: true
-bid_order_level_spreads: 0
-ask_order_level_spreads: 0
+bid_order_level_spreads: 0.001
+ask_order_level_spreads: 0.001
 bid_order_level_amounts: 15
 ask_order_level_amounts: 15 
