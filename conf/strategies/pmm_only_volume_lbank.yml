@@ -17,12 +17,12 @@ ping_pong_enabled: false
 order_levels: 1
 order_level_amount: 0
 order_level_spread: 0.001
-inventory_skew_enabled: true
+inventory_skew_enabled: false
 inventory_target_base_pct: 50
 inventory_range_multiplier: 1.0
 inventory_price: 1
 filled_order_delay: 1
-hanging_orders_enabled: true
+hanging_orders_enabled: false
 hanging_orders_cancel_pct: 2.0
 order_optimization_enabled: true
 ask_order_optimization_depth: 1000
