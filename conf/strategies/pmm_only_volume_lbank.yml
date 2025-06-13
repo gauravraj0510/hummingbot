@@ -25,8 +25,8 @@ filled_order_delay: 1
 hanging_orders_enabled: true
 hanging_orders_cancel_pct: 2.0
 order_optimization_enabled: true
-ask_order_optimization_depth: 0.1
-bid_order_optimization_depth: 0.1
+ask_order_optimization_depth: 1000
+bid_order_optimization_depth: 1000
 price_source: current_market
 price_type: mid_price
 price_source_exchange: mexc
@@ -37,7 +37,7 @@ add_transaction_costs: false
 take_if_crossed: false
 order_override: {}
 should_wait_order_cancel_confirmation: true
-bid_order_level_spreads: 0.001
-ask_order_level_spreads: 0.001
-bid_order_level_amounts: 50
-ask_order_level_amounts: 50 
+bid_order_level_spreads: 0
+ask_order_level_spreads: 0
+bid_order_level_amounts: 30000
+ask_order_level_amounts: 30000 
