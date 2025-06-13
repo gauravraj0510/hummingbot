@@ -5,7 +5,7 @@ candles_config: []
 controllers_config:
 - conf_lbank_volume.yml
 script_file_name: v2_with_controllers.py
-time_to_cash_out: null
+# time_to_cash_out: null
 max_global_drawdown: null
 max_controller_drawdown: null
 # rebalance_interval: 120
