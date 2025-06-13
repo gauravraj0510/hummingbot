@@ -35,7 +35,7 @@ price_source_custom_api: ""
 custom_api_update_interval: 5
 add_transaction_costs: false
 take_if_crossed: false
-order_override: false
+order_override: {}
 should_wait_order_cancel_confirmation: true
 bid_order_level_spreads: 0.001
 ask_order_level_spreads: 0.001
