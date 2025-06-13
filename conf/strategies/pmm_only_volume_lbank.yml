@@ -1,3 +1,4 @@
+strategy: pure_market_making
 exchange: lbank
 market: MNTL-USDT
 bid_spread: 0
