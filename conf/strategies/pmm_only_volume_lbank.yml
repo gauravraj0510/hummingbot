@@ -39,5 +39,5 @@ order_override: {}
 should_wait_order_cancel_confirmation: true
 bid_order_level_spreads: 0
 ask_order_level_spreads: 0
-bid_order_level_amounts: 30000
-ask_order_level_amounts: 30000 
+bid_order_level_amounts: 1
+ask_order_level_amounts: 1 
