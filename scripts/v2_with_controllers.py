@@ -1,12 +1,10 @@
 import os
-import time
 from decimal import Decimal
 from typing import Dict, List, Optional, Set
 
 from hummingbot.client.hummingbot_application import HummingbotApplication
 from hummingbot.connector.connector_base import ConnectorBase
 from hummingbot.core.clock import Clock
-from hummingbot.core.data_type.common import OrderType, TradeType
 from hummingbot.data_feed.candles_feed.data_types import CandlesConfig
 from hummingbot.remote_iface.mqtt import ETopicPublisher
 from hummingbot.strategy.strategy_v2_base import StrategyV2Base, StrategyV2ConfigBase
@@ -14,21 +12,15 @@ from hummingbot.strategy_v2.models.base import RunnableStatus
 from hummingbot.strategy_v2.models.executor_actions import CreateExecutorAction, StopExecutorAction
 
 
-class GenericV2StrategyWithCashOutConfig(StrategyV2ConfigBase):
+class V2WithControllersConfig(StrategyV2ConfigBase):
     script_file_name: str = os.path.basename(__file__)
     candles_config: List[CandlesConfig] = []
     markets: Dict[str, Set[str]] = {}
-    time_to_cash_out: Optional[int] = None
     max_global_drawdown: Optional[float] = None
     max_controller_drawdown: Optional[float] = None
-    rebalance_interval: Optional[int] = None
-    extra_inventory: Optional[float] = 0.02
-    min_amount_to_rebalance_usd: Decimal = Decimal("8")
-    asset_to_rebalance: str = "USDT"
-    target_balance: Optional[Decimal] = None
 
 
-class GenericV2StrategyWithCashOut(StrategyV2Base):
+class V2WithControllers(StrategyV2Base):
     """
     This script runs a generic strategy with cash out feature. Will also check if the controllers configs have been
     updated and apply the new settings.
@@ -41,25 +33,16 @@ class GenericV2StrategyWithCashOut(StrategyV2Base):
     """
     performance_report_interval: int = 1
 
-    def __init__(self, connectors: Dict[str, ConnectorBase], config: GenericV2StrategyWithCashOutConfig):
+    def __init__(self, connectors: Dict[str, ConnectorBase], config: V2WithControllersConfig):
         super().__init__(connectors, config)
         self.config = config
-        self.cashing_out = False
         self.max_pnl_by_controller = {}
-        self.performance_reports = {}
         self.max_global_pnl = Decimal("0")
         self.drawdown_exited_controllers = []
         self.closed_executors_buffer: int = 30
-        self.rebalance_interval: int = self.config.rebalance_interval
         self._last_performance_report_timestamp = 0
-        self._last_rebalance_check_timestamp = 0
-        hb_app = HummingbotApplication.main_application()
-        self.mqtt_enabled = hb_app._mqtt is not None
+        self.mqtt_enabled = HummingbotApplication.main_application()._mqtt is not None
         self._pub: Optional[ETopicPublisher] = None
-        if self.config.time_to_cash_out:
-            self.cash_out_time = self.config.time_to_cash_out + time.time()
-        else:
-            self.cash_out_time = None
 
     def start(self, clock: Clock, timestamp: float) -> None:
         """
@@ -80,175 +63,9 @@ class GenericV2StrategyWithCashOut(StrategyV2Base):
 
     def on_tick(self):
         super().on_tick()
-        self.performance_reports = {controller_id: self.executor_orchestrator.generate_performance_report(controller_id=controller_id).dict() for controller_id in self.controllers.keys()}
-        self.control_rebalance()
-        self.control_cash_out()
+        self.check_manual_kill_switch()
         self.control_max_drawdown()
         self.send_performance_report()
-
-    def control_rebalance(self):
-        if self.rebalance_interval and self._last_rebalance_check_timestamp + self.rebalance_interval <= self.current_timestamp:
-            # Cancel existing rebalancing orders before placing new ones
-            for connector_name, connector in self.connectors.items():
-                if "perpetual" in connector_name:
-                    continue
-                for trading_pair in connector.trading_pairs:
-                    if self.config.asset_to_rebalance in trading_pair:
-                        # Iterate through current orders for this connector and trading pair
-                        for order in self.current_orders[connector_name]:
-                            if order.is_open and order.trading_pair == trading_pair:
-                                self.logger().info(f"Cancelling old rebalancing order {order.client_order_id} on {connector_name} for {trading_pair}.")
-                                self.cancel_order(connector.name, trading_pair, order.client_order_id)
-
-            if self.config.target_balance is not None:
-                # Use new target balance rebalancing logic
-                for connector_name, connector in self.connectors.items():
-                    if "perpetual" in connector_name:
-                        continue
-                    
-                    current_rebalance_asset_balance = connector.get_balance(self.config.asset_to_rebalance)
-                    balance_diff = current_rebalance_asset_balance - self.config.target_balance
-
-                    min_rebalance_amount_in_asset = self.config.min_amount_to_rebalance_usd
-                    # Need to find a trading pair to convert min_amount_to_rebalance_usd if asset_to_rebalance is not USDT
-                    # For simplicity, let's assume we find a pair like MNTL-USDT and use its mid price
-                    if self.config.asset_to_rebalance != "USDT":
-                        found_conversion_pair = None
-                        for pair in connector.trading_pairs:
-                            if self.config.asset_to_rebalance in pair and "USDT" in pair:
-                                found_conversion_pair = pair
-                                break
-                        if found_conversion_pair:
-                            conversion_mid_price = connector.get_mid_price(found_conversion_pair)
-                            if conversion_mid_price > 0:
-                                if self.config.asset_to_rebalance == found_conversion_pair.split("-")[0]: # If rebalance asset is base
-                                    min_rebalance_amount_in_asset = self.config.min_amount_to_rebalance_usd / conversion_mid_price
-                                else: # If rebalance asset is quote (already in USDT terms)
-                                    pass
-                            else:
-                                self.logger().warning(f"Could not get mid price for {found_conversion_pair} to convert min_amount_to_rebalance_usd.")
-                                continue
-                        else:
-                            self.logger().warning(f"Could not find a trading pair to convert min_amount_to_rebalance_usd for {self.config.asset_to_rebalance}.")
-                            continue # Skip rebalancing if conversion is not possible
-
-                    if abs(balance_diff) > min_rebalance_amount_in_asset:
-                        for trading_pair in connector.trading_pairs:
-                            base_asset, quote_asset = trading_pair.split("-")
-
-                            mid_price = connector.get_mid_price(trading_pair)
-                            if mid_price <= 0: # Avoid division by zero
-                                continue
-                            trading_rule = connector.trading_rules.get(trading_pair)
-                            if not trading_rule:
-                                continue
-
-                            order_placed = False
-                            if self.config.asset_to_rebalance == base_asset:
-                                # Rebalancing the base asset (e.g., MNTL in MNTL-USDT)
-                                if balance_diff > 0:  # Too much base_asset, need to sell base_asset
-                                    amount_to_trade = balance_diff
-                                    if amount_to_trade > trading_rule.min_order_size and amount_to_trade * mid_price > trading_rule.min_notional_size:
-                                        self.logger().info(f"Rebalance (Sell {base_asset}): Selling {amount_to_trade} {base_asset} to maintain target {self.config.asset_to_rebalance} balance. Current: {current_rebalance_asset_balance}, Target: {self.config.target_balance}")
-                                        connector.sell(
-                                            trading_pair=trading_pair,
-                                            amount=amount_to_trade,
-                                            order_type=OrderType.MARKET,
-                                            price=mid_price) # Price might be ignored by Market order
-                                        order_placed = True
-                                else:  # Too little base_asset, need to buy base_asset
-                                    amount_to_trade = abs(balance_diff)
-                                    if amount_to_trade > trading_rule.min_order_size and amount_to_trade * mid_price > trading_rule.min_notional_size:
-                                        self.logger().info(f"Rebalance (Buy {base_asset}): Buying {amount_to_trade} {base_asset} to maintain target {self.config.asset_to_rebalance} balance. Current: {current_rebalance_asset_balance}, Target: {self.config.target_balance}")
-                                        connector.buy(
-                                            trading_pair=trading_pair,
-                                            amount=amount_to_trade,
-                                            order_type=OrderType.MARKET,
-                                            price=mid_price) # Price might be ignored by Market order
-                                        order_placed = True
-                            elif self.config.asset_to_rebalance == quote_asset:
-                                # Rebalancing the quote asset (e.g., USDT in MNTL-USDT)
-                                if balance_diff > 0:  # Too much quote_asset, need to buy base_asset to use quote_asset
-                                    amount_to_trade = balance_diff / mid_price # Amount of base asset to buy
-                                    if amount_to_trade > trading_rule.min_order_size and amount_to_trade * mid_price > trading_rule.min_notional_size:
-                                        self.logger().info(f"Rebalance (Buy {base_asset}): Buying {amount_to_trade} {base_asset} to maintain target {self.config.asset_to_rebalance} balance. Current: {current_rebalance_asset_balance}, Target: {self.config.target_balance}")
-                                        connector.buy(
-                                            trading_pair=trading_pair,
-                                            amount=amount_to_trade,
-                                            order_type=OrderType.MARKET,
-                                            price=mid_price) # Price might be ignored by Market order
-                                        order_placed = True
-                                else:  # Too little quote_asset, need to sell base_asset to get quote_asset
-                                    amount_to_trade = abs(balance_diff) / mid_price # Amount of base asset to sell
-                                    if amount_to_trade > trading_rule.min_order_size and amount_to_trade * mid_price > trading_rule.min_notional_size:
-                                        self.logger().info(f"Rebalance (Sell {base_asset}): Selling {amount_to_trade} {base_asset} to maintain target {self.config.asset_to_rebalance} balance. Current: {current_rebalance_asset_balance}, Target: {self.config.target_balance}")
-                                        connector.sell(
-                                            trading_pair=trading_pair,
-                                            amount=amount_to_trade,
-                                            order_type=OrderType.MARKET,
-                                            price=mid_price) # Price might be ignored by Market order
-                                        order_placed = True
-                            
-                            if order_placed:
-                                break  # Only rebalance one token per connector to maintain target balance
-            else:
-                # Use old controller-based rebalancing logic
-                balance_required = {}
-                for controller_id, controller in self.controllers.items():
-                    connector_name = controller.config.model_dump().get("connector_name")
-                    if connector_name and "perpetual" in connector_name:
-                        continue
-                    if connector_name not in balance_required:
-                        balance_required[connector_name] = {}
-                    tokens_required = controller.get_balance_requirements()
-                    for token, amount in tokens_required:
-                        if token not in balance_required[connector_name]:
-                            balance_required[connector_name][token] = amount
-                        else:
-                            balance_required[connector_name][token] += amount
-                for connector_name, balance_requirements in balance_required.items():
-                    connector = self.connectors[connector_name]
-                    for token, amount in balance_requirements.items():
-                        if token == self.config.asset_to_rebalance:
-                            continue
-                        balance = connector.get_balance(token)
-                        trading_pair = f"{token}-{self.config.asset_to_rebalance}"
-                        mid_price = connector.get_mid_price(trading_pair)
-                        trading_rule = connector.trading_rules[trading_pair]
-                        amount_with_safe_margin = amount * (1 + Decimal(self.config.extra_inventory))
-                        active_executors_for_pair = self.filter_executors(
-                            executors=self.get_all_executors(),
-                            filter_func=lambda x: x.is_active and x.trading_pair == trading_pair and x.connector_name == connector_name
-                        )
-                        unmatched_amount = sum([executor.filled_amount_quote for executor in active_executors_for_pair if executor.side == TradeType.SELL]) - sum([executor.filled_amount_quote for executor in active_executors_for_pair if executor.side == TradeType.BUY])
-                        balance += unmatched_amount / mid_price
-                        base_balance_diff = balance - amount_with_safe_margin
-                        abs_balance_diff = abs(base_balance_diff)
-                        trading_rules_condition = abs_balance_diff > trading_rule.min_order_size and abs_balance_diff * mid_price > trading_rule.min_notional_size and abs_balance_diff * mid_price > self.config.min_amount_to_rebalance_usd
-                        order_type = OrderType.MARKET
-                        if base_balance_diff > 0:
-                            if trading_rules_condition:
-                                self.logger().info(f"Rebalance: Selling {amount_with_safe_margin} {token} to {self.config.asset_to_rebalance}. Balance: {balance} | Executors unmatched balance {unmatched_amount / mid_price}")
-                                connector.sell(
-                                    trading_pair=trading_pair,
-                                    amount=abs_balance_diff,
-                                    order_type=order_type,
-                                    price=mid_price)
-                            else:
-                                self.logger().info("Skipping rebalance due a low amount to sell that may cause future imbalance")
-                        else:
-                            if not trading_rules_condition:
-                                amount = max([self.config.min_amount_to_rebalance_usd / mid_price, trading_rule.min_order_size, trading_rule.min_notional_size / mid_price])
-                                self.logger().info(f"Rebalance: Buying for a higher value to avoid future imbalance {amount} {token} to {self.config.asset_to_rebalance}. Balance: {balance} | Executors unmatched balance {unmatched_amount}")
-                            else:
-                                amount = abs_balance_diff
-                                self.logger().info(f"Rebalance: Buying {amount} {token} to {self.config.asset_to_rebalance}. Balance: {balance} | Executors unmatched balance {unmatched_amount}")
-                            connector.buy(
-                                trading_pair=trading_pair,
-                                amount=amount,
-                                order_type=order_type,
-                                price=mid_price)
-            self._last_rebalance_check_timestamp = self.current_timestamp
 
     def control_max_drawdown(self):
         if self.config.max_controller_drawdown:
@@ -260,7 +77,7 @@ class GenericV2StrategyWithCashOut(StrategyV2Base):
         for controller_id, controller in self.controllers.items():
             if controller.status != RunnableStatus.RUNNING:
                 continue
-            controller_pnl = self.performance_reports[controller_id]["global_pnl_quote"]
+            controller_pnl = self.get_performance_report(controller_id).global_pnl_quote
             last_max_pnl = self.max_pnl_by_controller[controller_id]
             if controller_pnl > last_max_pnl:
                 self.max_pnl_by_controller[controller_id] = controller_pnl
@@ -270,7 +87,7 @@ class GenericV2StrategyWithCashOut(StrategyV2Base):
                     self.logger().info(f"Controller {controller_id} reached max drawdown. Stopping the controller.")
                     controller.stop()
                     executors_order_placed = self.filter_executors(
-                        executors=self.executors_info[controller_id],
+                        executors=self.get_executors_by_controller(controller_id),
                         filter_func=lambda x: x.is_active and not x.is_trading,
                     )
                     self.executor_orchestrator.execute_actions(
@@ -279,7 +96,7 @@ class GenericV2StrategyWithCashOut(StrategyV2Base):
                     self.drawdown_exited_controllers.append(controller_id)
 
     def check_max_global_drawdown(self):
-        current_global_pnl = sum([report["global_pnl_quote"] for report in self.performance_reports.values()])
+        current_global_pnl = sum([self.get_performance_report(controller_id).global_pnl_quote for controller_id in self.controllers.keys()])
         if current_global_pnl > self.max_global_pnl:
             self.max_global_pnl = current_global_pnl
         else:
@@ -291,26 +108,13 @@ class GenericV2StrategyWithCashOut(StrategyV2Base):
 
     def send_performance_report(self):
         if self.current_timestamp - self._last_performance_report_timestamp >= self.performance_report_interval and self.mqtt_enabled:
-            self._pub(self.performance_reports)
+            performance_reports = {controller_id: self.get_performance_report(controller_id).dict() for controller_id in self.controllers.keys()}
+            self._pub(performance_reports)
             self._last_performance_report_timestamp = self.current_timestamp
 
-    def control_cash_out(self):
-        self.evaluate_cash_out_time()
-        if self.cashing_out:
-            self.check_executors_status()
-        else:
-            self.check_manual_cash_out()
-
-    def evaluate_cash_out_time(self):
-        if self.cash_out_time and self.current_timestamp >= self.cash_out_time and not self.cashing_out:
-            self.logger().info("Cash out time reached. Stopping the controllers.")
-            for controller_id, controller in self.controllers.items():
-                if controller.status == RunnableStatus.RUNNING:
-                    self.logger().info(f"Cash out for controller {controller_id}.")
-                    controller.stop()
-            self.cashing_out = True
-
-    def check_manual_cash_out(self):
+    def check_manual_kill_switch(self):
+        if self._is_stop_triggered:
+            return
         for controller_id, controller in self.controllers.items():
             if controller.config.manual_kill_switch and controller.status == RunnableStatus.RUNNING:
                 self.logger().info(f"Manual cash out for controller {controller_id}.")
@@ -352,7 +156,7 @@ class GenericV2StrategyWithCashOut(StrategyV2Base):
         connectors_position_mode = {}
         for controller_id, controller in self.controllers.items():
             self.max_pnl_by_controller[controller_id] = Decimal("0")
-            config_dict = controller.config.dict()
+            config_dict = controller.config.model_dump()
             if "connector_name" in config_dict:
                 if self.is_perpetual(config_dict["connector_name"]):
                     if "position_mode" in config_dict:

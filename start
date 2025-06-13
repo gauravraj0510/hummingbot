@@ -1,8 +1,5 @@
 #!/bin/bash
 
-export PATH=/opt/anaconda3/envs/hummingbot/bin:$PATH
-export PYTHONPATH=.
-
 PASSWORD=""
 FILENAME=""
 CONFIG=""
