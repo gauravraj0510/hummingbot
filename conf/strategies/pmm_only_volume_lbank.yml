@@ -1,5 +1,5 @@
 strategy: pure_market_making
-exchange: lbank
+exchange: mexc
 market: MNTL-USDT
 bid_spread: 0
 ask_spread: 0
@@ -29,7 +29,7 @@ ask_order_optimization_depth: 1000
 bid_order_optimization_depth: 1000
 price_source: current_market
 price_type: mid_price
-price_source_exchange: mexc
+price_source_exchange: lbank
 price_source_market: MNTL-USDT
 price_source_custom_api: ""
 custom_api_update_interval: 5
