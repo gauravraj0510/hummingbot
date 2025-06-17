@@ -16,7 +16,7 @@ price_ceiling_pct: 1
 price_band_refresh_time: 86400
 ping_pong_enabled: false
 order_levels: 4
-order_level_amount: 1
+# order_level_amount: 1
 order_level_spread: 0.5
 inventory_skew_enabled: false
 inventory_target_base_pct: 50
@@ -41,7 +41,5 @@ should_wait_order_cancel_confirmation: true
 split_order_levels_enabled: true
 bid_order_level_spreads: 0.75,1,1.5,1.9
 ask_order_level_spreads: 0.75,1,1.5,1.9
-# bid_order_level_amounts: 20,30,40,50
-# ask_order_level_amounts: 20,30,40,50
-bid_order_level_amounts: 11000,11000,11000,11000
-ask_order_level_amounts: 11000,11000,11000,11000
+bid_order_level_amounts: 50,50,50,50
+ask_order_level_amounts: 50,50,50,50
