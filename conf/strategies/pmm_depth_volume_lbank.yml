@@ -8,7 +8,7 @@ order_refresh_time: 20
 max_order_age: 1800
 order_refresh_tolerance_pct: 0.1
 # order_amount: 23000
-order_amount: 0
+# order_amount: 11000
 price_ceiling: -1
 price_floor: -1
 moving_price_band_enabled: false
