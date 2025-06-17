@@ -91,11 +91,21 @@ def print_balance_info(balance_response: dict, base_token: str = "mntl", quote_t
         print("Failed to get balance information")
         return
 
+    data = balance_response["data"]
+    print(f"\n[DEBUG] balance_response['data'] type: {type(data)} value: {data}")
+
     try:
-        assets = balance_response["data"].get("asset", {})
-        base_balance = float(assets.get(base_token, {}).get("free", 0))
-        quote_balance = float(assets.get(quote_token, {}).get("free", 0))
-        
+        if isinstance(data, dict):
+            assets = data.get("asset", {})
+            base_balance = float(assets.get(base_token, {}).get("free", 0))
+            quote_balance = float(assets.get(quote_token, {}).get("free", 0))
+        elif isinstance(data, str):
+            print(f"[DEBUG] data is a string: {data}")
+            base_balance = quote_balance = 0
+        else:
+            print(f"[DEBUG] Unexpected data type: {type(data)}")
+            base_balance = quote_balance = 0
+
         print(f"\nAccount Balances:")
         print(f"{base_token.upper()}: {base_balance}")
         print(f"{quote_token.upper()}: {quote_balance}")
