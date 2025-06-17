@@ -113,6 +113,27 @@ def print_balance_info(balance_response: dict, base_token: str = "mntl", quote_t
     except Exception as e:
         print(f"Error parsing balance information: {e}")
 
+def print_response_structure(response: dict):
+    """
+    Print a clear view of the response structure
+    """
+    print("\n=== Response Structure ===")
+    print(f"Top level keys: {list(response.keys())}")
+    
+    if "data" in response:
+        data = response["data"]
+        print(f"\nData type: {type(data)}")
+        if isinstance(data, dict):
+            print("Data keys:", list(data.keys()))
+            if "asset" in data:
+                print("\nAsset structure:")
+                for asset, details in data["asset"].items():
+                    print(f"{asset}: {details}")
+        else:
+            print(f"Data value: {data}")
+    
+    print("\n=== End Response Structure ===\n")
+
 def main():
     # Your API credentials
     api_key = "7ddc9166-34fa-40e5-9392-cac770f3d426"
@@ -127,8 +148,8 @@ def main():
         balance = lbank.get_account_balance()
         
         if balance:
-            print("\nFull Balance Response:")
-            print(json.dumps(balance, indent=2))
+            # Print response structure
+            print_response_structure(balance)
             
             # Print specific token balances
             print_balance_info(balance, base_token="mntl", quote_token="usdt")
