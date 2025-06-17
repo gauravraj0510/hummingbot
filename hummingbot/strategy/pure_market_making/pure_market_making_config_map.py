@@ -432,7 +432,7 @@ pure_market_making_config_map = {
                   type_str="str",
                   required_if=lambda: pure_market_making_config_map.get(
                       "split_order_levels_enabled").value,
-                  validator=validate_lower_bound),
+                  validator=validate_decimal_list),
     "bid_order_level_amounts":
         ConfigVar(key="bid_order_level_amounts",
                   prompt="Enter the amount for all bid amounts. "
@@ -454,5 +454,5 @@ pure_market_making_config_map = {
                   required_if=lambda: pure_market_making_config_map.get(
                       "split_order_levels_enabled").value,
                   type_str="str",
-                  validator=validate_decimal_list),
+                  validator=validate_lower_bound),
 }
