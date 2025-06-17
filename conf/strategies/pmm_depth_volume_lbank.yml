@@ -7,7 +7,8 @@ minimum_spread: 0
 order_refresh_time: 20
 max_order_age: 1800
 order_refresh_tolerance_pct: 0.1
-order_amount: 23000
+# order_amount: 23000
+order_amount: 11000
 price_ceiling: -1
 price_floor: -1
 moving_price_band_enabled: false
@@ -39,5 +40,7 @@ order_override: false
 should_wait_order_cancel_confirmation: true
 bid_order_level_spreads: 0.75,1,1.5,1.9
 ask_order_level_spreads: 0.75,1,1.5,1.9
-bid_order_level_amounts: 20,30,40,50
-ask_order_level_amounts: 20,30,40,50
+# bid_order_level_amounts: 20,30,40,50
+# ask_order_level_amounts: 20,30,40,50
+bid_order_level_amounts: 5,5,5,5
+ask_order_level_amounts: 5,5,5,5
