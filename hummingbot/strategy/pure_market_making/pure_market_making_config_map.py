@@ -115,6 +115,16 @@ def validate_decimal_list(value: str) -> Optional[str]:
             return "Please enter valid decimal numbers"
         if validate_result is not None:
             return validate_result
+        
+def validate_lower_bound(value: str) -> Optional[str]:
+    decimal_list = list(value.split(","))
+    for number in decimal_list:
+        try:
+            validate_result = validate_decimal(Decimal(number), 0, max_value=None, inclusive=True)
+        except decimal.InvalidOperation:
+            return "Please enter valid decimal greater than 0"
+        if validate_result is not None:
+            return validate_result
 
 
 pure_market_making_config_map = {
@@ -422,7 +432,7 @@ pure_market_making_config_map = {
                   type_str="str",
                   required_if=lambda: pure_market_making_config_map.get(
                       "split_order_levels_enabled").value,
-                  validator=validate_decimal_list),
+                  validator=validate_lower_bound),
     "bid_order_level_amounts":
         ConfigVar(key="bid_order_level_amounts",
                   prompt="Enter the amount for all bid amounts. "
@@ -433,7 +443,7 @@ pure_market_making_config_map = {
                   type_str="str",
                   required_if=lambda: pure_market_making_config_map.get(
                       "split_order_levels_enabled").value,
-                  validator=validate_decimal_list),
+                  validator=validate_lower_bound),
     "ask_order_level_amounts":
         ConfigVar(key="ask_order_level_amounts",
                   prompt="Enter the amount for all ask amounts. "
