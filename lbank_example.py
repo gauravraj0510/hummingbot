@@ -92,45 +92,45 @@ def print_balance_info(balance_response: dict, base_token: str = "mntl", quote_t
         return
 
     data = balance_response["data"]
-    print(f"\n[DEBUG] balance_response['data'] type: {type(data)} value: {data}")
-
+    
     try:
         if isinstance(data, dict):
             assets = data.get("asset", {})
             base_balance = float(assets.get(base_token, {}).get("free", 0))
             quote_balance = float(assets.get(quote_token, {}).get("free", 0))
-        elif isinstance(data, str):
-            print(f"[DEBUG] data is a string: {data}")
-            base_balance = quote_balance = 0
+            
+            print("\nLBank Balances:")
+            print("    Asset    Total")
+            print("    -----    -----")
+            if base_balance > 0:
+                print(f"    {base_token.upper():<8} {base_balance:.4f}")
+            if quote_balance > 0:
+                print(f"    {quote_token.upper():<8} {quote_balance:.4f}")
+            
+            if base_balance == 0 and quote_balance == 0:
+                print("    You have no balance on this exchange.")
         else:
-            print(f"[DEBUG] Unexpected data type: {type(data)}")
-            base_balance = quote_balance = 0
-
-        print(f"\nAccount Balances:")
-        print(f"{base_token.upper()}: {base_balance}")
-        print(f"{quote_token.upper()}: {quote_balance}")
-        
+            print(f"Unexpected data format: {type(data)}")
+            
     except Exception as e:
         print(f"Error parsing balance information: {e}")
+        print(f"Response data: {data}")
 
 def print_response_structure(response: dict):
     """
     Print a clear view of the response structure
     """
     print("\n=== Response Structure ===")
-    print(f"Top level keys: {list(response.keys())}")
+    print(f"Status: {response.get('result', 'Unknown')}")
     
     if "data" in response:
         data = response["data"]
-        print(f"\nData type: {type(data)}")
         if isinstance(data, dict):
-            print("Data keys:", list(data.keys()))
-            if "asset" in data:
-                print("\nAsset structure:")
-                for asset, details in data["asset"].items():
-                    print(f"{asset}: {details}")
-        else:
-            print(f"Data value: {data}")
+            print("\nAvailable Assets:")
+            assets = data.get("asset", {})
+            for asset, details in assets.items():
+                if float(details.get("free", 0)) > 0:  # Only show non-zero balances
+                    print(f"{asset}: {details.get('free', 0)}")
     
     print("\n=== End Response Structure ===\n")
 
@@ -144,13 +144,9 @@ def main():
     
     try:
         # Get account balance
-        print("\nFetching account balance...")
         balance = lbank.get_account_balance()
         
         if balance:
-            # Print response structure
-            print_response_structure(balance)
-            
             # Print specific token balances
             print_balance_info(balance, base_token="mntl", quote_token="usdt")
         else:
