@@ -64,7 +64,7 @@ class LBankClient:
         }
 
 class BalanceManager:
-    def __init__(self, api_key: str, api_secret: str, target_balance: float = 60000):
+    def __init__(self, api_key: str, api_secret: str, target_balance: float = 60000, min_difference: float = 11500):
         """
         Initialize balance manager
         
@@ -72,9 +72,11 @@ class BalanceManager:
             api_key (str): LBank API key
             api_secret (str): LBank API secret
             target_balance (float): Target balance to maintain
+            min_difference (float): Minimum difference required to trigger rebalancing
         """
         self.client = LBankClient(api_key, api_secret)
         self.target_balance = target_balance
+        self.min_difference = min_difference
         self.base_token = "mntl"
         self.quote_token = "usdt"
         self.trading_pair = f"{self.base_token}_{self.quote_token}"
@@ -121,17 +123,23 @@ class BalanceManager:
             if current_balance < self.target_balance:
                 # Need to buy more MNTL
                 difference = self.target_balance - current_balance
-                usdt_amount = difference * current_price
-                print(f"\nBuying {difference} MNTL (≈{usdt_amount} USDT)")
-                order = self.execute_market_order("buy_market", usdt_amount)
-                print(f"Order executed: {json.dumps(order, indent=2)}")
+                if difference >= self.min_difference:
+                    usdt_amount = difference * current_price
+                    print(f"\nBuying {difference} MNTL (≈{usdt_amount} USDT)")
+                    order = self.execute_market_order("buy_market", usdt_amount)
+                    print(f"Order executed: {json.dumps(order, indent=2)}")
+                else:
+                    print(f"\nDifference ({difference} MNTL) is less than minimum threshold ({self.min_difference} MNTL). No action taken.")
                 
             elif current_balance > self.target_balance:
                 # Need to sell excess MNTL
                 difference = current_balance - self.target_balance
-                print(f"\nSelling {difference} MNTL")
-                order = self.execute_market_order("sell_market", difference)
-                print(f"Order executed: {json.dumps(order, indent=2)}")
+                if difference >= self.min_difference:
+                    print(f"\nSelling {difference} MNTL")
+                    order = self.execute_market_order("sell_market", difference)
+                    print(f"Order executed: {json.dumps(order, indent=2)}")
+                else:
+                    print(f"\nDifference ({difference} MNTL) is less than minimum threshold ({self.min_difference} MNTL). No action taken.")
                 
             else:
                 print("\nBalance is already at target level")
@@ -144,8 +152,8 @@ def main():
     api_key = "7ddc9166-34fa-40e5-9392-cac770f3d426"
     api_secret = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAMx48vX5CY6XKWhYeHAd6hgEDEAFd/e5B7TL2D1lqjtPzQThOvSvqZ5q2mEcA/k3/xirBOcrDkpb5XY/OmX8jGd8BpcJx4e+XxR/K22GtOvRlEJfUepJDkZr1xtEERWFZ37OYWpEt0YfxkI0Cv688bbPA/kxExQpd1dYQIA+FABBAgMBAAECgYEAg1gGKb7pRrEPJjn+U3bD0t12yQE6SOSQcLConPfbW/Is7j+H0XmtaVeWI98NJl+z+7KPmbbsnRNe2JBRAQYzYXbxj2KeJ97ZZDnbZIp/Fn9XdWAHdBKkOENBTtvvqXxNcyfsj8fPc+MMfMRnwB6zYNdxNXvC/GComtX33dMlAAECQQD7J4Es/TLc2/llpXtiZwUiXq9N/uCkwV6yYJJnfGAYfRrHx6wpUcMJWx76ivHxEWIVtz8qj0iNRvZMaA5EyhRBAkEA0Grf4tA6KrVHtwAZfKPO4W1FxLwOh8dMjSvYssCUtanfxEtlazJcMKyYWjNwD4l/ETgeUgOnlpBqAZnJjx7sAQJARKWqmBpo4Zc6lr7hd6cC7z8EGYR18HJuKMFeouyK84aWYE7CTtTrQ05lrEN4F9URgzAAEujxArSHs6CpbcHyQQJBAMgvH0RYBMaowG1BpzlUjY1wy6afisVX5GtkRgvLdgrXU5rTYGKKSIpn/R4Gcgg6ZNZBNL5JzFqN84P+Ft9lMAECQDy+6Obqs3w3VeOUa91U4NyTKkrDM3pif995lCgyvuseez4UL+BgmiXX7uRKOxbhHA9Tvc1Ht6y/oOi4kD8/ThI="
     
-    # Initialize balance manager
-    manager = BalanceManager(api_key, api_secret)
+    # Initialize balance manager with minimum difference threshold
+    manager = BalanceManager(api_key, api_secret, min_difference=11500)
     
     try:
         # Adjust balance to target
