@@ -88,11 +88,18 @@ class BalanceManager:
         """Get current price of MNTL/USDT"""
         try:
             response = self.client.client.http_request("get", "v2/supplement/ticker/price.do")
+            print(f"\nAvailable trading pairs:")
             if isinstance(response, list):
                 for pair in response:
-                    if pair.get('symbol') == self.trading_pair:
+                    print(f"Symbol: {pair.get('symbol')}")
+                    if pair.get('symbol').lower() == self.trading_pair.lower():
                         return float(pair.get('price', 0))
-            raise Exception(f"Could not find price for {self.trading_pair}")
+            elif isinstance(response, dict) and 'data' in response:
+                for pair in response['data']:
+                    print(f"Symbol: {pair.get('symbol')}")
+                    if pair.get('symbol').lower() == self.trading_pair.lower():
+                        return float(pair.get('price', 0))
+            raise Exception(f"Could not find price for {self.trading_pair}. Please check if the trading pair exists.")
         except Exception as e:
             print(f"Error getting price: {str(e)}")
             raise
@@ -101,6 +108,7 @@ class BalanceManager:
         """Get current MNTL balance"""
         try:
             balance_info = self.client.get_token_balance(self.base_token)
+            print(f"\nBalance info: {json.dumps(balance_info, indent=2)}")
             return float(balance_info['usable'])
         except Exception as e:
             print(f"Error getting balance: {str(e)}")
