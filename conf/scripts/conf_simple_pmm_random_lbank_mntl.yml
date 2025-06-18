@@ -2,9 +2,9 @@ script_file_name: simple_pmm_random.py
 exchange: lbank
 trading_pair: MNTL-USDT
 min_order_amount: 22000
-max_order_amount: 33000
+max_order_amount: 24000
 bid_spread: 0.0000
 ask_spread: 0.0000
-min_order_refresh_time: 5
-max_order_refresh_time: 10
+min_order_refresh_time: 18
+max_order_refresh_time: 20
 price_type: mid
