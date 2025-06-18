@@ -26,8 +26,12 @@ class LBankClient:
         """Get detailed account information using the correct endpoint"""
         try:
             response = self.client.http_request("post", "v2/supplement/user_info_account.do")
-            print(f"\nAccount Info Response: {json.dumps(response, indent=2)}")
+            print(f"\nRaw Account Info Response: {json.dumps(response, indent=2)}")
+            
             if isinstance(response, dict):
+                if 'data' in response:
+                    # If response is wrapped in a data field
+                    return response['data']
                 return response
             return {}
         except Exception as e:
@@ -42,10 +46,16 @@ class LBankClient:
             token (str): Token symbol (e.g., 'mntl', 'usdt')
         """
         account_info = self.get_detailed_account_info()
+        print(f"\nProcessing account info for token {token}:")
+        print(f"Account info: {json.dumps(account_info, indent=2)}")
+        
         if account_info and 'balances' in account_info:
             for balance in account_info['balances']:
-                if balance['asset'].lower() == token.lower():
+                print(f"Checking balance: {json.dumps(balance, indent=2)}")
+                if balance['asset'].upper() == token.upper():
+                    print(f"Found matching balance for {token}")
                     return balance
+        print(f"No balance found for {token}")
         return {}
     
     def get_token_balance(self, token: str) -> Dict[str, Any]:
@@ -56,6 +66,8 @@ class LBankClient:
             token (str): Token symbol (e.g., 'mntl', 'usdt')
         """
         token_details = self.get_token_details(token)
+        print(f"\nToken details for {token}: {json.dumps(token_details, indent=2)}")
+        
         if token_details:
             return {
                 'token': token,
@@ -84,8 +96,8 @@ class BalanceManager:
         self.client = LBankClient(api_key, api_secret)
         self.target_balance = target_balance
         self.min_difference = min_difference
-        self.base_token = "mntl"
-        self.quote_token = "usdt"
+        self.base_token = "MNTL"  # Changed to uppercase to match API response
+        self.quote_token = "USDT"  # Changed to uppercase to match API response
         self.trading_pair = f"{self.base_token}_{self.quote_token}"
     
     def get_current_price(self) -> float:
@@ -127,14 +139,24 @@ class BalanceManager:
             amount (float): Amount to trade
         """
         try:
+            # For buy_market, amount is in quote currency (USDT)
+            # For sell_market, amount is in base currency (MNTL)
             payload = {
                 "symbol": self.trading_pair,
                 "type": order_type,
-                "amount": str(amount)
+                "amount": str(amount),
+                "api_key": self.client.client.api_key
             }
+            
+            print(f"\nExecuting order with payload: {json.dumps(payload, indent=2)}")
             response = self.client.client.http_request("post", "v2/supplement/create_order.do", payload=payload)
-            if isinstance(response, dict) and 'data' in response:
-                return response['data']
+            print(f"\nOrder response: {json.dumps(response, indent=2)}")
+            
+            if isinstance(response, dict):
+                if response.get('result') == 'true':
+                    return response
+                else:
+                    raise Exception(f"Order failed: {response.get('msg', 'Unknown error')}")
             return response
         except Exception as e:
             print(f"Error executing order: {str(e)}")
@@ -157,8 +179,11 @@ class BalanceManager:
                 if difference >= self.min_difference:
                     usdt_amount = difference * current_price
                     print(f"\nBuying {difference} MNTL (≈{usdt_amount} USDT)")
-                    order = self.execute_market_order("buy_market", usdt_amount)
-                    print(f"Order executed: {json.dumps(order, indent=2)}")
+                    try:
+                        order = self.execute_market_order("buy_market", usdt_amount)
+                        print(f"Order executed: {json.dumps(order, indent=2)}")
+                    except Exception as e:
+                        print(f"Failed to execute buy order: {str(e)}")
                 else:
                     print(f"\nDifference ({difference} MNTL) is less than minimum threshold ({self.min_difference} MNTL). No action taken.")
                 
@@ -167,8 +192,11 @@ class BalanceManager:
                 difference = current_balance - self.target_balance
                 if difference >= self.min_difference:
                     print(f"\nSelling {difference} MNTL")
-                    order = self.execute_market_order("sell_market", difference)
-                    print(f"Order executed: {json.dumps(order, indent=2)}")
+                    try:
+                        order = self.execute_market_order("sell_market", difference)
+                        print(f"Order executed: {json.dumps(order, indent=2)}")
+                    except Exception as e:
+                        print(f"Failed to execute sell order: {str(e)}")
                 else:
                     print(f"\nDifference ({difference} MNTL) is less than minimum threshold ({self.min_difference} MNTL). No action taken.")
                 
