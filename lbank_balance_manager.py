@@ -24,7 +24,10 @@ class LBankClient:
     
     def get_detailed_account_info(self) -> List[Dict[str, Any]]:
         """Get detailed account information including network details"""
-        return self.client.http_request("post", "v2/supplement/user_info.do")
+        response = self.client.http_request("post", "v2/supplement/user_info.do")
+        if isinstance(response, dict) and 'data' in response:
+            return response['data']
+        return []
     
     def get_token_details(self, token: str) -> Dict[str, Any]:
         """
@@ -83,16 +86,25 @@ class BalanceManager:
     
     def get_current_price(self) -> float:
         """Get current price of MNTL/USDT"""
-        response = self.client.client.http_request("get", "v2/supplement/ticker/price.do")
-        for pair in response:
-            if pair['symbol'] == self.trading_pair:
-                return float(pair['price'])
-        raise Exception(f"Could not find price for {self.trading_pair}")
+        try:
+            response = self.client.client.http_request("get", "v2/supplement/ticker/price.do")
+            if isinstance(response, list):
+                for pair in response:
+                    if pair.get('symbol') == self.trading_pair:
+                        return float(pair.get('price', 0))
+            raise Exception(f"Could not find price for {self.trading_pair}")
+        except Exception as e:
+            print(f"Error getting price: {str(e)}")
+            raise
     
     def get_current_balance(self) -> float:
         """Get current MNTL balance"""
-        balance_info = self.client.get_token_balance(self.base_token)
-        return float(balance_info['usable'])
+        try:
+            balance_info = self.client.get_token_balance(self.base_token)
+            return float(balance_info['usable'])
+        except Exception as e:
+            print(f"Error getting balance: {str(e)}")
+            raise
     
     def execute_market_order(self, order_type: str, amount: float) -> Dict[str, Any]:
         """
@@ -102,12 +114,19 @@ class BalanceManager:
             order_type (str): 'buy_market' or 'sell_market'
             amount (float): Amount to trade
         """
-        payload = {
-            "symbol": self.trading_pair,
-            "type": order_type,
-            "amount": str(amount)
-        }
-        return self.client.client.http_request("post", "v2/supplement/create_order.do", payload=payload)
+        try:
+            payload = {
+                "symbol": self.trading_pair,
+                "type": order_type,
+                "amount": str(amount)
+            }
+            response = self.client.client.http_request("post", "v2/supplement/create_order.do", payload=payload)
+            if isinstance(response, dict) and 'data' in response:
+                return response['data']
+            return response
+        except Exception as e:
+            print(f"Error executing order: {str(e)}")
+            raise
     
     def adjust_balance(self) -> None:
         """Adjust balance to target by executing market orders"""
