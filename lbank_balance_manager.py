@@ -22,24 +22,30 @@ class LBankClient:
             log_level=logging.INFO
         )
     
-    def get_detailed_account_info(self) -> List[Dict[str, Any]]:
-        """Get detailed account information including network details"""
-        response = self.client.http_request("post", "v2/supplement/user_info.do")
-        if isinstance(response, dict) and 'data' in response:
-            return response['data']
-        return []
+    def get_detailed_account_info(self) -> Dict[str, Any]:
+        """Get detailed account information using the correct endpoint"""
+        try:
+            response = self.client.http_request("post", "v2/supplement/user_info_account.do")
+            print(f"\nAccount Info Response: {json.dumps(response, indent=2)}")
+            if isinstance(response, dict):
+                return response
+            return {}
+        except Exception as e:
+            print(f"Error getting account info: {str(e)}")
+            return {}
     
     def get_token_details(self, token: str) -> Dict[str, Any]:
         """
-        Get detailed information for a specific token including network details
+        Get detailed information for a specific token
         
         Args:
             token (str): Token symbol (e.g., 'mntl', 'usdt')
         """
         account_info = self.get_detailed_account_info()
-        for asset in account_info:
-            if asset['coin'].lower() == token.lower():
-                return asset
+        if account_info and 'balances' in account_info:
+            for balance in account_info['balances']:
+                if balance['asset'].lower() == token.lower():
+                    return balance
         return {}
     
     def get_token_balance(self, token: str) -> Dict[str, Any]:
@@ -53,17 +59,15 @@ class LBankClient:
         if token_details:
             return {
                 'token': token,
-                'usable': token_details.get('usableAmt', '0'),
-                'total': token_details.get('assetAmt', '0'),
-                'frozen': token_details.get('freezeAmt', '0'),
-                'networks': token_details.get('networkList', [])
+                'usable': token_details.get('free', '0'),
+                'total': token_details.get('free', '0'),
+                'frozen': token_details.get('locked', '0')
             }
         return {
             'token': token,
             'usable': '0',
             'total': '0',
-            'frozen': '0',
-            'networks': []
+            'frozen': '0'
         }
 
 class BalanceManager:
