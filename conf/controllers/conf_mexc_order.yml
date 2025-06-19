@@ -1,5 +1,5 @@
 id: conf_mexc_volume
-controller_name: pmm_simple
+controller_name: pmm_simple_cg
 controller_type: market_making
 total_amount_quote: '3000'
 manual_kill_switch: false
