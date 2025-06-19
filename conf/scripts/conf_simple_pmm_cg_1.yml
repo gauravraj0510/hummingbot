@@ -1,9 +1,0 @@
-script_file_name: simple_pmm_cg.py
-exchange: lbank
-trading_pair: MNTL-USDT
-order_amount: '22000'
-bid_spread: '0.002'
-ask_spread: '0.002'
-order_refresh_time: 15
-base_token: MNTL
-quote_market: osmosis
