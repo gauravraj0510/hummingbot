@@ -1,0 +1,41 @@
+id: conf_mexc_volume
+controller_name: pmm_simple
+controller_type: market_making
+total_amount_quote: '3000'
+manual_kill_switch: false
+candles_config: []
+connector_name: mexc
+trading_pair: MNTL-USDT
+buy_spreads:
+- 0.003
+- 0.007
+- 0.011
+- 0.015
+- 0.019
+sell_spreads:
+- 0.003
+- 0.007
+- 0.011
+- 0.015
+- 0.019
+buy_amounts_pct:
+- 0.02631578947368421
+- 0.05263157894736842
+- 0.07894736842105263
+- 0.13157894736842105
+- 0.21052631578947367
+sell_amounts_pct:
+- 0.02631578947368421
+- 0.05263157894736842
+- 0.07894736842105263
+- 0.13157894736842105
+- 0.21052631578947367
+executor_refresh_time: 10
+cooldown_time: 10
+leverage: 1
+position_mode: HEDGE
+stop_loss: '0.0001'
+take_profit: '0.0003'
+time_limit: 180
+take_profit_order_type: 2
+trailing_stop: null
