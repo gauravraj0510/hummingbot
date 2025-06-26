@@ -3,8 +3,8 @@ markets:
   - MNTL-USDT
 candles_config: []
 controllers_config:
-- conf_lbank_order.yml
-# - conf_mexc_order.yml
+# - conf_lbank_order.yml
+- conf_mexc_order.yml
 script_file_name: v2_with_controllers.py
 # time_to_cash_out: null
 max_global_drawdown: null

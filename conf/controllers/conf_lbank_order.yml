@@ -1,5 +1,5 @@
 id: conf_lbank_volume
-controller_name: pmm_simple_cg
+controller_name: pmm_simple_lbank
 controller_type: market_making
 total_amount_quote: '300'
 manual_kill_switch: false

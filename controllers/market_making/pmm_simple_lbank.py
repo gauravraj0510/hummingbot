@@ -56,7 +56,7 @@ class PMMSimpleConfig(MarketMakingControllerConfigBase):
     # As this controller is a simple version of the PMM, we are not using the candles feed
     candles_config: List[CandlesConfig] = Field(default=[])
     base_token: str = Field("MNTL", description="The token symbol to get price for from CoinGecko")
-    quote_market: str = Field("mxc", description="The CoinGecko market identifier for price source")
+    quote_market: str = Field("osmosis", description="The CoinGecko market identifier for price source")
 
 
 class PMMSimpleController(MarketMakingControllerBase):
