@@ -70,15 +70,16 @@ class PMMSimpleController(MarketMakingControllerBase):
         # Always use CoinGecko price for entry_price
         if self._base_token_coingecko_id is None:
             self._base_token_coingecko_id = get_coingecko_id(self.config.base_token)
-        entry_price = price
         if self._base_token_coingecko_id is not None:
             cg_price = get_price_from_specific_market_coingecko(self._base_token_coingecko_id, self.config.quote_market)
             if cg_price is not None:
                 entry_price = cg_price
             else:
-                logging.getLogger().warning(f"Falling back to passed price for entry_price; CoinGecko price unavailable.")
+                logging.getLogger().error(f"CoinGecko price unavailable for {self.config.base_token} on {self.config.quote_market}. Order will not be created.")
+                return None  # Do not create order
         else:
-            logging.getLogger().warning(f"Falling back to passed price for entry_price; CoinGecko ID unavailable.")
+            logging.getLogger().error(f"CoinGecko ID unavailable for {self.config.base_token}. Order will not be created.")
+            return None  # Do not create order
         return PositionExecutorConfig(
             timestamp=self.market_data_provider.time(),
             level_id=level_id,
