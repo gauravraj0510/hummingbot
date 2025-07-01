@@ -115,6 +115,7 @@ def start(self):
 
         strategy_logging_options = PureMarketMakingStrategy.OPTION_LOG_ALL
         self.strategy = PureMarketMakingStrategy()
+        status_report_interval = c_map.get("status_report_interval").value or 60
         self.strategy.init_params(
             market_info=MarketTradingPairTuple(*maker_data),
             bid_spread=bid_spread,
@@ -151,7 +152,8 @@ def start(self):
             bid_order_level_spreads=bid_order_level_spreads,
             ask_order_level_spreads=ask_order_level_spreads,
             should_wait_order_cancel_confirmation=should_wait_order_cancel_confirmation,
-            moving_price_band=moving_price_band
+            moving_price_band=moving_price_band,
+            status_report_interval=status_report_interval
         )
     except Exception as e:
         self.notify(str(e))
