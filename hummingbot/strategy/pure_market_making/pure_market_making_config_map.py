@@ -455,4 +455,10 @@ pure_market_making_config_map = {
                       "split_order_levels_enabled").value,
                   type_str="str",
                   validator=validate_lower_bound),
+    "status_report_interval":
+        ConfigVar(key="status_report_interval",
+                  prompt="How often (in seconds) do you want the bot to print a status report? >>> ",
+                  type_str="float",
+                  default=900,
+                  validator=lambda v: validate_decimal(Decimal(v), 1, 86400, inclusive=True)),
 }

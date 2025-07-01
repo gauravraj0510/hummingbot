@@ -697,7 +697,8 @@ cdef class PureMarketMakingStrategy(StrategyBase):
         StrategyBase.c_start(self, clock, timestamp)
         self._last_timestamp = timestamp
 
-        self._hanging_orders_tracker.register_events(self.active_markets)
+        if self._hanging_orders_tracker is not None:
+            self._hanging_orders_tracker.register_events(self.active_markets)
 
         if self._hanging_orders_enabled:
             # start tracking any restored limit order
@@ -709,7 +710,8 @@ cdef class PureMarketMakingStrategy(StrategyBase):
                     self._hanging_orders_tracker.add_as_hanging_order(order)
 
     cdef c_stop(self, Clock clock):
-        self._hanging_orders_tracker.unregister_events(self.active_markets)
+        if self._hanging_orders_tracker is not None:
+            self._hanging_orders_tracker.unregister_events(self.active_markets)
         StrategyBase.c_stop(self, clock)
 
     cdef c_tick(self, double timestamp):

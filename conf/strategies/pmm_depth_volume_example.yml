@@ -43,3 +43,4 @@ bid_order_level_spreads: 0.75,1,1.5,1.9
 ask_order_level_spreads: 0.75,1,1.5,1.9
 bid_order_level_amounts: 33600,67200,100800,134400
 ask_order_level_amounts: 33600,67200,100800,134400
+status_report_interval: 60
