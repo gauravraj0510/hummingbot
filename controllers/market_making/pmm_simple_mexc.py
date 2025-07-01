@@ -74,6 +74,8 @@ class PMMSimpleController(MarketMakingControllerBase):
             cg_price = get_price_from_specific_market_coingecko(self._base_token_coingecko_id, self.config.quote_market)
             if cg_price is not None:
                 entry_price = cg_price
+                logging.getLogger().error(f"CG AVAILABLE for {cg_price}!!!")
+
             else:
                 logging.getLogger().error(f"CoinGecko price unavailable for {self.config.base_token} on {self.config.quote_market}. Order will not be created.")
                 return None  # Do not create order
