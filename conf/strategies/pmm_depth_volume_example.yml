@@ -1,5 +1,5 @@
 strategy: pure_market_making
-exchange: lbank
+exchange: mexc
 market: MNTL-USDT
 bid_spread: 0.6
 ask_spread: 0.6
@@ -28,12 +28,12 @@ hanging_orders_cancel_pct: 2.0
 order_optimization_enabled: true
 ask_order_optimization_depth: 0.1
 bid_order_optimization_depth: 0.1
-price_source: current_market
+price_source: custom_api
 price_type: mid_price
 price_source_exchange: mexc
 price_source_market: MNTL-USDT
-price_source_custom_api: ""
-custom_api_update_interval: 5
+# price_source_custom_api: ""  # Not needed for CoinGecko delegate
+custom_api_update_interval: 30
 add_transaction_costs: false
 take_if_crossed: false
 order_override: {}
