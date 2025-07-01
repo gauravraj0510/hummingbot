@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import List, Optional
 import requests
 from pydantic import Field
+import time
 
 from hummingbot.data_feed.candles_feed.data_types import CandlesConfig
 from hummingbot.strategy_v2.controllers.market_making_controller_base import (
@@ -64,24 +65,31 @@ class PMMSimpleController(MarketMakingControllerBase):
         super().__init__(config, *args, **kwargs)
         self.config = config
         self._base_token_coingecko_id: Optional[str] = None
+        self._last_cg_price: Optional[Decimal] = None
+        self._last_cg_price_time: float = 0
+        self._cg_price_refresh_interval: float = 30  # seconds
 
     def get_executor_config(self, level_id: str, price: Decimal, amount: Decimal):
         trade_type = self.get_trade_type_from_level_id(level_id)
+        now = time.time()
         # Always use CoinGecko price for entry_price
         if self._base_token_coingecko_id is None:
             self._base_token_coingecko_id = get_coingecko_id(self.config.base_token)
         if self._base_token_coingecko_id is not None:
-            cg_price = get_price_from_specific_market_coingecko(self._base_token_coingecko_id, self.config.quote_market)
-            if cg_price is not None:
-                entry_price = cg_price
-                logging.getLogger().error(f"CG AVAILABLE for {cg_price}!!!")
-
-            else:
-                logging.getLogger().error(f"CoinGecko price unavailable for {self.config.base_token} on {self.config.quote_market}. Order will not be created.")
-                return None  # Do not create order
+            # Only fetch new price if interval has passed
+            if self._last_cg_price is None or now - self._last_cg_price_time > self._cg_price_refresh_interval:
+                cg_price = get_price_from_specific_market_coingecko(self._base_token_coingecko_id, self.config.quote_market)
+                if cg_price is not None:
+                    self._last_cg_price = cg_price
+                    self._last_cg_price_time = now
+                    logging.getLogger().info(f"Fetched new CoinGecko price: {cg_price}")
+                else:
+                    logging.getLogger().error(f"CoinGecko price unavailable for {self.config.base_token} on {self.config.quote_market}. Order will not be created.")
+                    return None
+            entry_price = self._last_cg_price
         else:
             logging.getLogger().error(f"CoinGecko ID unavailable for {self.config.base_token}. Order will not be created.")
-            return None  # Do not create order
+            return None
         return PositionExecutorConfig(
             timestamp=self.market_data_provider.time(),
             level_id=level_id,
