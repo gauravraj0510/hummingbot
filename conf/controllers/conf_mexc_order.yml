@@ -7,17 +7,17 @@ candles_config: []
 connector_name: mexc
 trading_pair: MNTL-USDT
 buy_spreads:
-- 0.009
-- 0.010
-- 0.012
-- 0.015
-- 0.019
+- 0.1
+- 0.2
+- 0.3
+- 0.4
+- 0.5
 sell_spreads:
-- 0.009
-- 0.010
-- 0.012
-- 0.015
-- 0.019
+- 0.1
+- 0.2
+- 0.3
+- 0.4
+- 0.5
 buy_amounts_pct:
 - 0.02631578947368421
 - 0.05263157894736842
