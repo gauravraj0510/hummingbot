@@ -32,7 +32,7 @@ price_source: custom_api
 price_type: mid_price
 price_source_exchange: kucoin
 price_source_market: MNTL-USDT
-price_source_custom_api: ""  # Not needed for CoinGecko delegate
+price_source_custom_api: "test.com"  # Not needed for CoinGecko delegate
 custom_api_update_interval: 30
 add_transaction_costs: false
 take_if_crossed: false
