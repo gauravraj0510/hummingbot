@@ -30,7 +30,7 @@ ask_order_optimization_depth: 0.1
 bid_order_optimization_depth: 0.1
 price_source: custom_api
 price_type: mid_price
-price_source_exchange: mexc
+price_source_exchange: mexc1
 price_source_market: MNTL-USDT
 # price_source_custom_api: ""  # Not needed for CoinGecko delegate
 custom_api_update_interval: 30
