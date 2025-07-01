@@ -1,5 +1,5 @@
 markets:
-  lbank:
+  mexc:
   - MNTL-USDT
 candles_config: []
 controllers_config:
