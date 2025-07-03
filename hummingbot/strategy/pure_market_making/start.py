@@ -82,8 +82,10 @@ def start(self):
         maker_assets: Tuple[str, str] = self._initialize_market_assets(exchange, [trading_pair])[0]
         market_names: List[Tuple[str, List[str]]] = [(exchange, [trading_pair])]
         self._initialize_markets(market_names)
+        print(f"DEBUG: Markets initialized: {self.markets}")
         maker_data = [self.markets[exchange], trading_pair] + list(maker_assets)
         self.market_trading_pair_tuples = [MarketTradingPairTuple(*maker_data)]
+        print(f"DEBUG: MarketTradingPairTuple: {self.market_trading_pair_tuples}")
 
         asset_price_delegate = None
         if price_source == "external_market":
@@ -94,12 +96,11 @@ def start(self):
         elif price_source == "custom_api":
             asset_price_delegate = APIAssetPriceDelegate(self.markets[exchange], price_source_custom_api,
                                                          custom_api_update_interval)
-            
         elif price_source == "coingecko":
-            # Use CoinGeckoAssetPriceDelegate for price fetching
             base_token, quote_token = trading_pair.split("-")
-            # Use price_source_exchange as the CoinGecko market identifier (e.g., 'kucoin')
             asset_price_delegate = CoinGeckoAssetPriceDelegate(base_token, cg_market)
+            print(f"DEBUG: CoinGeckoAssetPriceDelegate created: {asset_price_delegate}")
+            print(f"DEBUG: CoinGeckoAssetPriceDelegate ready: {getattr(asset_price_delegate, 'ready', None)}")
             # TODO: Log the price delegate
             self.logger().error("🌟 CG Price Delegate: ", asset_price_delegate, exc_info=True)
 
