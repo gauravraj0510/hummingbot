@@ -40,6 +40,7 @@ take_if_crossed: false
 order_override: {}
 should_wait_order_cancel_confirmation: true
 split_order_levels_enabled: true
+order_level_amounts_in_quote: true
 bid_order_level_spreads: 2,3,4,5
 ask_order_level_spreads: 2,3,4,5
 bid_order_level_amounts: 1111,3333,6666,9999
