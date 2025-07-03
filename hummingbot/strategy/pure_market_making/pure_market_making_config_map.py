@@ -460,5 +460,5 @@ pure_market_making_config_map = {
                   prompt="Enter the CoinGecko market identifier (e.g. osmosis, kucoin, etc.) >>> ",
                   required_if=lambda: pure_market_making_config_map.get("price_source").value == "coingecko",
                   type_str="str",
-                  default=None),
+                  default="osmosis"),
 }
