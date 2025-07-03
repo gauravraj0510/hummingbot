@@ -20,6 +20,9 @@ class CoinGeckoAssetPriceDelegate(AssetPriceDelegate):
 
     @property
     def ready(self) -> bool:
+        if self._last_cg_price is None:
+            # Try to fetch price immediately if not already fetched
+            self.c_get_mid_price()
         ready = self._last_cg_price is not None
         self._logger.info(f"[CoinGeckoAssetPriceDelegate] .ready called, value: {ready}, last_cg_price: {self._last_cg_price}")
         return ready
