@@ -10,7 +10,6 @@ from hummingbot.strategy.order_book_asset_price_delegate import OrderBookAssetPr
 from hummingbot.strategy.pure_market_making import InventoryCostPriceDelegate, PureMarketMakingStrategy
 from hummingbot.strategy.pure_market_making.moving_price_band import MovingPriceBand
 from hummingbot.strategy.pure_market_making.pure_market_making_config_map import pure_market_making_config_map as c_map
-from hummingbot.strategy.pure_market_making.custom_coingecko_price_delegate import CoinGeckoPriceDelegate
 
 
 def start(self):
@@ -91,20 +90,8 @@ def start(self):
             self.markets[price_source_exchange]: ExchangeBase = ext_market
             asset_price_delegate = OrderBookAssetPriceDelegate(ext_market, asset_trading_pair)
         elif price_source == "custom_api":
-            # Use CoinGeckoPriceDelegate for custom_api price source
-            # Extract base token symbol from market (e.g., 'MNTL-USDT' -> 'MNTL')
-            base_token_symbol = raw_trading_pair.split("-")[0].lower()
-            # Map symbol to CoinGecko ID (user should update this mapping as needed)
-            symbol_to_id = {
-                'mntl': 'assetmantle',
-                # Add more mappings here if needed
-            }
-            base_token_id = symbol_to_id.get(base_token_symbol, base_token_symbol)
-            asset_price_delegate = CoinGeckoPriceDelegate(
-                base_token_id=base_token_id,
-                quote_market_identifier="mxc",
-                refresh_interval=custom_api_update_interval
-            )
+            asset_price_delegate = APIAssetPriceDelegate(self.markets[exchange], price_source_custom_api,
+                                                         custom_api_update_interval)
         inventory_cost_price_delegate = None
         if price_type == "inventory_cost":
             db = HummingbotApplication.main_application().trade_fill_db
@@ -115,7 +102,6 @@ def start(self):
 
         strategy_logging_options = PureMarketMakingStrategy.OPTION_LOG_ALL
         self.strategy = PureMarketMakingStrategy()
-        status_report_interval = c_map.get("status_report_interval").value or 60
         self.strategy.init_params(
             market_info=MarketTradingPairTuple(*maker_data),
             bid_spread=bid_spread,
@@ -152,8 +138,7 @@ def start(self):
             bid_order_level_spreads=bid_order_level_spreads,
             ask_order_level_spreads=ask_order_level_spreads,
             should_wait_order_cancel_confirmation=should_wait_order_cancel_confirmation,
-            moving_price_band=moving_price_band,
-            status_report_interval=status_report_interval
+            moving_price_band=moving_price_band
         )
     except Exception as e:
         self.notify(str(e))
