@@ -461,10 +461,4 @@ pure_market_making_config_map = {
                   required_if=lambda: pure_market_making_config_map.get("price_source").value == "coingecko",
                   type_str="str",
                   default="osmosis"),
-    "order_level_amounts_in_quote":
-        ConfigVar(key="order_level_amounts_in_quote",
-                  prompt="Are order level amounts specified in quote asset (e.g. USDT)? (Yes/No) >>> ",
-                  type_str="bool",
-                  default=False,
-                  validator=validate_bool),
 }

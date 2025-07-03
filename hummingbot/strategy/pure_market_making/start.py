@@ -71,26 +71,6 @@ def start(self):
             c_map.get("bid_order_level_amounts").value)
         ask_order_level_amounts = convert_decimal_string_to_list(
             c_map.get("ask_order_level_amounts").value)
-
-        order_level_amounts_in_quote = c_map.get("order_level_amounts_in_quote").value if c_map.get("order_level_amounts_in_quote") else False
-        base_token, quote_token = raw_trading_pair.split("-")
-        mexc_market = None
-        mexc_price = None
-        if order_level_amounts_in_quote:
-            mexc_market = self.markets.get("mexc")
-            if mexc_market:
-                try:
-                    mexc_price = mexc_market.get_price(raw_trading_pair, True)  # Use best ask for conversion
-                except Exception as e:
-                    print(f"DEBUG: Failed to fetch mexc price for conversion: {e}")
-            else:
-                print("DEBUG: mexc market not initialized for price conversion!")
-        def convert_amounts(amounts: List[Decimal]) -> List[Decimal]:
-            if order_level_amounts_in_quote and mexc_price and mexc_price > 0:
-                return [amt / Decimal(mexc_price) for amt in amounts]
-            return amounts
-        bid_order_level_amounts = convert_amounts(bid_order_level_amounts)
-        ask_order_level_amounts = convert_amounts(ask_order_level_amounts)
         if split_order_levels_enabled:
             buy_list = [['buy', spread, amount] for spread, amount in zip(bid_order_level_spreads, bid_order_level_amounts)]
             sell_list = [['sell', spread, amount] for spread, amount in zip(ask_order_level_spreads, ask_order_level_amounts)]
