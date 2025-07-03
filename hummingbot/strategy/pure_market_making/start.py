@@ -50,6 +50,7 @@ def start(self):
         price_source = c_map.get("price_source").value
         price_type = c_map.get("price_type").value
         price_source_exchange = c_map.get("price_source_exchange").value
+        cg_market = c_map.get("cg_market").value
         price_source_market = c_map.get("price_source_market").value
         price_source_custom_api = c_map.get("price_source_custom_api").value
         custom_api_update_interval = c_map.get("custom_api_update_interval").value
@@ -98,7 +99,7 @@ def start(self):
             # Use CoinGeckoAssetPriceDelegate for price fetching
             base_token, quote_token = trading_pair.split("-")
             # Use price_source_exchange as the CoinGecko market identifier (e.g., 'kucoin')
-            asset_price_delegate = CoinGeckoAssetPriceDelegate(base_token, price_source_exchange)
+            asset_price_delegate = CoinGeckoAssetPriceDelegate(base_token, cg_market)
             # TODO: Log the price delegate
             self.logger().error("🌟 CG Price Delegate: ", asset_price_delegate, exc_info=True)
 
