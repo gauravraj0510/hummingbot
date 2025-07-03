@@ -10,6 +10,7 @@ from hummingbot.strategy.order_book_asset_price_delegate import OrderBookAssetPr
 from hummingbot.strategy.pure_market_making import InventoryCostPriceDelegate, PureMarketMakingStrategy
 from hummingbot.strategy.pure_market_making.moving_price_band import MovingPriceBand
 from hummingbot.strategy.pure_market_making.pure_market_making_config_map import pure_market_making_config_map as c_map
+from hummingbot.strategy.pure_market_making.coin_gecko_asset_price_delegate import CoinGeckoAssetPriceDelegate
 
 
 def start(self):
@@ -92,6 +93,13 @@ def start(self):
         elif price_source == "custom_api":
             asset_price_delegate = APIAssetPriceDelegate(self.markets[exchange], price_source_custom_api,
                                                          custom_api_update_interval)
+            
+        elif price_source == "coingecko":
+            # Use CoinGeckoAssetPriceDelegate for price fetching
+            base_token, quote_token = trading_pair.split("-")
+            # Use price_source_exchange as the CoinGecko market identifier (e.g., 'kucoin')
+            asset_price_delegate = CoinGeckoAssetPriceDelegate(base_token, price_source_exchange)
+
         inventory_cost_price_delegate = None
         if price_type == "inventory_cost":
             db = HummingbotApplication.main_application().trade_fill_db
