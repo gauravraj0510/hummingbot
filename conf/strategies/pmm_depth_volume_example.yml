@@ -42,5 +42,5 @@ should_wait_order_cancel_confirmation: true
 split_order_levels_enabled: true
 bid_order_level_spreads: 0.75,1,1.5,1.9
 ask_order_level_spreads: 0.75,1,1.5,1.9
-bid_order_level_amounts: 510000,760000,1100000,1600000
-ask_order_level_amounts: 510000,760000,1100000,1600000
+bid_order_level_amounts: 400000,640000,924000,1538400
+ask_order_level_amounts: 400000,640000,924000,1538400
