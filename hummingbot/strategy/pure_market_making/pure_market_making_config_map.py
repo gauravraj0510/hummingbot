@@ -34,7 +34,7 @@ def order_amount_prompt() -> str:
 
 
 def validate_price_source(value: str) -> Optional[str]:
-    if value not in {"current_market", "external_market", "custom_api"}:
+    if value not in {"current_market", "external_market", "custom_api", "coingecko"}:
         return "Invalid price source type."
 
 
