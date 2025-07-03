@@ -99,6 +99,9 @@ def start(self):
             base_token, quote_token = trading_pair.split("-")
             # Use price_source_exchange as the CoinGecko market identifier (e.g., 'kucoin')
             asset_price_delegate = CoinGeckoAssetPriceDelegate(base_token, price_source_exchange)
+            # TODO: Log the price delegate
+            self.logger().error("🌟 CG Price Delegate: ", asset_price_delegate, exc_info=True)
+
 
         inventory_cost_price_delegate = None
         if price_type == "inventory_cost":
