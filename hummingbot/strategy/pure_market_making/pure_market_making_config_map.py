@@ -455,4 +455,10 @@ pure_market_making_config_map = {
                       "split_order_levels_enabled").value,
                   type_str="str",
                   validator=validate_lower_bound),
+    "cg_market":
+        ConfigVar(key="cg_market",
+                  prompt="Enter the CoinGecko market identifier (e.g. osmosis, kucoin, etc.) >>> ",
+                  required_if=lambda: pure_market_making_config_map.get("price_source").value == "coingecko",
+                  type_str="str",
+                  default=None),
 }
